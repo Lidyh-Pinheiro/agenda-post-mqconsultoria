@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
 import CalendarEntry from '@/components/CalendarEntry';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface CalendarPost {
   id: number;
