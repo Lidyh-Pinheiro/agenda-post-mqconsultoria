@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
@@ -118,7 +117,6 @@ const Index = () => {
   const [visiblePosts, setVisiblePosts] = useState<CalendarPost[]>([]);
   const [posts, setPosts] = useState<CalendarPost[]>([]);
   
-  // Load stored posts from localStorage or use the default data
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
@@ -128,7 +126,6 @@ const Index = () => {
     }
   }, []);
 
-  // Save posts to localStorage whenever they change
   useEffect(() => {
     if (posts.length > 0) {
       localStorage.setItem('calendarPosts', JSON.stringify(posts));
@@ -144,12 +141,10 @@ const Index = () => {
   }, [posts]);
   
   const handleSelectPost = (post: CalendarPost) => {
-    // Find the most updated version of the post
     const currentPost = posts.find(p => p.id === post.id) || post;
     setSelectedPost(currentPost);
     setIsDetailView(true);
     
-    // Smooth scroll to top
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
@@ -159,7 +154,6 @@ const Index = () => {
   const handleBackToCalendar = () => {
     setIsDetailView(false);
     
-    // Small delay to allow animation
     setTimeout(() => {
       setSelectedPost(null);
     }, 300);
@@ -201,7 +195,6 @@ const Index = () => {
         if (e.target?.result) {
           const imageDataUrl = e.target.result as string;
           
-          // Update the post with the new image
           setPosts(prev => prev.map(post => {
             if (post.id === postId) {
               const updatedImages = [...(post.images || []), imageDataUrl];
@@ -236,7 +229,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white">
-      {/* Decorative elements */}
       <div className="fixed top-0 right-0 w-1/3 h-1/3 bg-red-100 rounded-bl-full opacity-30 -z-10" />
       <div className="fixed bottom-0 left-0 w-1/2 h-1/2 bg-red-100 rounded-tr-full opacity-20 -z-10" />
       
@@ -356,7 +348,6 @@ const Index = () => {
                     Imagens da Publicação
                   </h3>
                   
-                  {/* Display uploaded images */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                     {selectedPost.images && selectedPost.images.length > 0 ? (
                       selectedPost.images.map((img, index) => (
@@ -380,7 +371,6 @@ const Index = () => {
                     )}
                   </div>
                   
-                  {/* Image upload input */}
                   <div className="flex flex-col items-center p-4 border-2 border-dashed border-red-200 rounded-lg bg-red-50">
                     <Upload className="w-8 h-8 text-red-600 mb-2" />
                     <p className="text-sm text-gray-600 mb-2">Clique para adicionar imagens ou arraste e solte aqui</p>
