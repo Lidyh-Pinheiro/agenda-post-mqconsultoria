@@ -178,9 +178,17 @@ const Index = () => {
   };
 
   const handleUpdateNotes = (postId: number, notes: string) => {
-    setPosts(prev => prev.map(post => 
-      post.id === postId ? { ...post, notes } : post
-    ));
+    setPosts(prev => {
+      const updatedPosts = prev.map(post => 
+        post.id === postId ? { ...post, notes } : post
+      );
+      
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost({ ...selectedPost, notes });
+      }
+      
+      return updatedPosts;
+    });
   };
 
   const handleImageUpload = (postId: number, event: React.ChangeEvent<HTMLInputElement>) => {
