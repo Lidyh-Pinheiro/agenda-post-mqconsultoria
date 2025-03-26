@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { cn } from "@/lib/utils";
+import { Check } from 'lucide-react';
 
 interface CalendarEntryProps {
   date: string;
@@ -10,6 +11,8 @@ interface CalendarEntryProps {
   text: string;
   className?: string;
   highlighted?: boolean;
+  useRedTheme?: boolean;
+  completed?: boolean;
   onSelect?: () => void;
 }
 
@@ -21,6 +24,8 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
   text,
   className,
   highlighted = false,
+  useRedTheme = false,
+  completed = false,
   onSelect
 }) => {
   return (
@@ -29,22 +34,31 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
         "calendar-entry p-6 rounded-2xl relative overflow-hidden",
         "flex flex-col w-full backdrop-blur-sm transition-all duration-300",
         highlighted 
-          ? "glass-card border-2 border-neia-blue" 
+          ? "glass-card border-2" 
           : "bg-white/80 shadow-sm hover:shadow-lg border border-gray-100",
+        useRedTheme && highlighted ? "border-red-600" : highlighted ? "border-neia-blue" : "",
+        completed ? "border-green-500" : "",
         className
       )}
       onClick={onSelect}
     >
       <div className="flex items-center mb-4">
         <div className={cn(
-          "date-badge text-white font-medium text-sm py-1 px-3 rounded-full",
-          "flex items-center justify-center"
+          "text-white font-medium text-sm py-1 px-3 rounded-full",
+          "flex items-center justify-center",
+          useRedTheme ? "date-badge-red" : "date-badge"
         )}>
           <span>{date}</span>
           <span className="ml-1">•</span>
           <span className="ml-1">{day}</span>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center space-x-2">
+          {completed && (
+            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+              <Check className="w-3 h-3 mr-1" />
+              Concluído
+            </span>
+          )}
           <span className="bg-neia-gray text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
             {type}
           </span>
@@ -62,7 +76,10 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
       </div>
       
       {highlighted && (
-        <div className="mt-4 text-neia-blue text-sm font-medium flex items-center">
+        <div className={cn(
+          "mt-4 text-sm font-medium flex items-center",
+          useRedTheme ? "text-red-600" : "text-neia-blue"
+        )}>
           <span>Ver detalhes</span>
           <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

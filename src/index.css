@@ -109,6 +109,11 @@
   box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
 }
 
+.date-badge-red {
+  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+}
+
 .calendar-entry {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
