@@ -4,9 +4,12 @@ import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
 import CalendarEntry from '@/components/CalendarEntry';
 import { toast } from 'sonner';
-import { Check, X } from 'lucide-react';
+import { Check, X, Upload, Image } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 interface CalendarPost {
   id: number;
@@ -19,6 +22,7 @@ interface CalendarPost {
   text: string;
   completed?: boolean;
   notes?: string;
+  images?: string[];
 }
 
 const calendarPosts: CalendarPost[] = [
@@ -112,7 +116,24 @@ const Index = () => {
   const [selectedPost, setSelectedPost] = useState<CalendarPost | null>(null);
   const [isDetailView, setIsDetailView] = useState(false);
   const [visiblePosts, setVisiblePosts] = useState<CalendarPost[]>([]);
-  const [posts, setPosts] = useState<CalendarPost[]>(calendarPosts);
+  const [posts, setPosts] = useState<CalendarPost[]>([]);
+  
+  // Load stored posts from localStorage or use the default data
+  useEffect(() => {
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts) {
+      setPosts(JSON.parse(storedPosts));
+    } else {
+      setPosts(calendarPosts);
+    }
+  }, []);
+
+  // Save posts to localStorage whenever they change
+  useEffect(() => {
+    if (posts.length > 0) {
+      localStorage.setItem('calendarPosts', JSON.stringify(posts));
+    }
+  }, [posts]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -123,7 +144,9 @@ const Index = () => {
   }, [posts]);
   
   const handleSelectPost = (post: CalendarPost) => {
-    setSelectedPost(post);
+    // Find the most updated version of the post
+    const currentPost = posts.find(p => p.id === post.id) || post;
+    setSelectedPost(currentPost);
     setIsDetailView(true);
     
     // Smooth scroll to top
@@ -164,6 +187,51 @@ const Index = () => {
     setPosts(prev => prev.map(post => 
       post.id === postId ? { ...post, notes } : post
     ));
+  };
+
+  const handleImageUpload = (postId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const newImages: string[] = [];
+    
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          const imageDataUrl = e.target.result as string;
+          
+          // Update the post with the new image
+          setPosts(prev => prev.map(post => {
+            if (post.id === postId) {
+              const updatedImages = [...(post.images || []), imageDataUrl];
+              return { ...post, images: updatedImages };
+            }
+            return post;
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    
+    toast("Imagem(ns) adicionada(s) com sucesso!", {
+      duration: 2000,
+    });
+  };
+
+  const handleRemoveImage = (postId: number, imageIndex: number) => {
+    setPosts(prev => prev.map(post => {
+      if (post.id === postId && post.images) {
+        const updatedImages = [...post.images];
+        updatedImages.splice(imageIndex, 1);
+        return { ...post, images: updatedImages };
+      }
+      return post;
+    }));
+
+    toast("Imagem removida!", {
+      duration: 2000,
+    });
   };
 
   return (
@@ -259,6 +327,15 @@ const Index = () => {
                   <div className="whitespace-pre-line text-gray-600 text-md leading-relaxed">
                     {selectedPost.text}
                   </div>
+                  <Button
+                    onClick={() => handleCopyText(selectedPost.text)}
+                    className="mt-4 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    Copiar Texto
+                  </Button>
                 </div>
                 
                 <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
@@ -268,21 +345,71 @@ const Index = () => {
                   <Textarea 
                     placeholder="Adicione informações específicas, links ou outras observações..."
                     className="min-h-[100px] border-red-100 focus-visible:ring-red-400"
-                    value={selectedPost.notes}
+                    value={selectedPost.notes || ''}
                     onChange={(e) => handleUpdateNotes(selectedPost.id, e.target.value)}
                   />
                 </div>
                 
+                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
+                  <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+                    <Image className="w-5 h-5 mr-2 text-red-600" />
+                    Imagens da Publicação
+                  </h3>
+                  
+                  {/* Display uploaded images */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                    {selectedPost.images && selectedPost.images.length > 0 ? (
+                      selectedPost.images.map((img, index) => (
+                        <div key={index} className="relative group">
+                          <img 
+                            src={img} 
+                            alt={`Imagem ${index + 1}`} 
+                            className="w-full h-40 object-cover rounded-lg border border-gray-200" 
+                          />
+                          <button
+                            onClick={() => handleRemoveImage(selectedPost.id, index)}
+                            className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Remover imagem"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 italic col-span-full">Nenhuma imagem adicionada</p>
+                    )}
+                  </div>
+                  
+                  {/* Image upload input */}
+                  <div className="flex flex-col items-center p-4 border-2 border-dashed border-red-200 rounded-lg bg-red-50">
+                    <Upload className="w-8 h-8 text-red-600 mb-2" />
+                    <p className="text-sm text-gray-600 mb-2">Clique para adicionar imagens ou arraste e solte aqui</p>
+                    
+                    <Input
+                      type="file"
+                      id={`file-upload-${selectedPost.id}`}
+                      className="hidden"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(selectedPost.id, e)}
+                    />
+                    <label
+                      htmlFor={`file-upload-${selectedPost.id}`}
+                      className="inline-flex items-center justify-center text-sm font-medium gap-2 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Selecionar Imagens
+                    </label>
+                  </div>
+                </div>
+                
                 <div className="flex justify-center">
-                  <button
-                    onClick={() => handleCopyText(selectedPost.text)}
+                  <Button
+                    onClick={handleBackToCalendar}
                     className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-xl transition-colors shadow-md"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    Copiar Texto
-                  </button>
+                    Salvar e Voltar
+                  </Button>
                 </div>
               </div>
             </div>
