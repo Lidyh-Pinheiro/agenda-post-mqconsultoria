@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Lock } from 'lucide-react';
+import { Lock, MessageCircle } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 
@@ -22,6 +22,7 @@ interface CalendarPost {
   images?: string[];
   clientId?: string;
   socialNetworks?: string[];
+  time?: string;
 }
 
 const SharedClientAgenda = () => {
@@ -187,6 +188,18 @@ const SharedClientAgenda = () => {
           <p className="text-gray-700 mt-2">
             {client.description || "Confira abaixo as postagens planejadas"}
           </p>
+          
+          <div className="mt-4">
+            <a 
+              href="https://wa.me/91993299153" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full transition-colors"
+            >
+              <MessageCircle className="h-5 w-5" />
+              <span>Suporte via WhatsApp</span>
+            </a>
+          </div>
         </div>
         
         {posts.length > 0 ? (
@@ -194,7 +207,7 @@ const SharedClientAgenda = () => {
             {posts.map((post) => (
               <div key={post.id} className="flex print:page-break-inside-avoid">
                 <CalendarEntry
-                  date={post.date}
+                  date={post.date + (post.time ? ` ${post.time}` : '')}
                   day={post.dayOfWeek}
                   title={post.title}
                   type={post.postType}

@@ -24,6 +24,7 @@ export const supabase = {
     signOut: async () => ({ error: null }),
     signUp: async () => ({ data: null, error: null }),
     signIn: async () => ({ data: null, error: null }),
-    onAuthStateChange: () => ({ data: null, subscription: { unsubscribe: () => {} } })
+    onAuthStateChange: () => ({ data: null, subscription: { unsubscribe: () => {} } }),
+    updateUser: async () => ({ data: null, error: null })
   }
 };
