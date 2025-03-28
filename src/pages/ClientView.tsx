@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Lock, MessageCircle, Eye, EyeOff, Instagram, Facebook, Link } from 'lucide-react';
+import { Lock, MessageCircle, Eye, EyeOff, Instagram, Facebook, Link, LogOut } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
@@ -29,6 +29,7 @@ interface CalendarPost {
 
 const ClientView = () => {
   const { clientId } = useParams<{ clientId: string }>();
+  const navigate = useNavigate();
   const { settings, verifyClientPassword } = useSettings();
   const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<CalendarPost[]>([]);
@@ -172,7 +173,6 @@ const ClientView = () => {
     if (!client || !password || !clientId) return;
     
     console.log('Authenticating with password:', password);
-    console.log('Client password (should be hidden in production):', client.password);
     
     try {
       const isValid = await verifyClientPassword(clientId, password);
@@ -192,6 +192,13 @@ const ClientView = () => {
       setError('Erro ao verificar senha. Por favor, tente novamente.');
       toast.error("Erro de autenticação");
     }
+  };
+  
+  const handleLogout = () => {
+    localStorage.removeItem(`client_auth_${clientId}`);
+    setAuthenticated(false);
+    setPassword('');
+    toast.success("Você saiu com sucesso!");
   };
   
   const togglePasswordVisibility = () => {
@@ -315,43 +322,54 @@ const ClientView = () => {
       style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}15, white)` }}
     >
       <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 
-            className="text-3xl font-bold tracking-tight"
-            style={{ color: themeColor }}
-          >
-            Agenda de Postagens
-          </h1>
-          <h2 className="text-2xl font-semibold text-gray-800 mt-2">
-            {client.name}
-          </h2>
-          <p className="text-gray-700 mt-2">
-            {client.description || "Planejamento da Semana/Mês"}
-          </p>
-          
-          <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
-            <Button
-              onClick={shareViaWhatsApp}
-              className="inline-flex items-center gap-2 text-white"
-              style={{ backgroundColor: "#25D366" }}
+        <div className="flex justify-between items-center mb-6">
+          <div className="text-center">
+            <h1 
+              className="text-3xl font-bold tracking-tight"
+              style={{ color: themeColor }}
             >
-              <MessageCircle className="h-5 w-5" />
-              <span>Compartilhar via WhatsApp</span>
-            </Button>
-            
-            <Button
-              onClick={copyUrl}
-              variant="outline"
-              className="inline-flex items-center gap-2"
-            >
-              <Link className="h-5 w-5" />
-              <span>Copiar Link</span>
-            </Button>
+              Agenda de Postagens
+            </h1>
+            <h2 className="text-2xl font-semibold text-gray-800 mt-2">
+              {client.name}
+            </h2>
+            <p className="text-gray-700 mt-2">
+              {client.description || "Planejamento da Semana/Mês"}
+            </p>
           </div>
+          
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sair</span>
+          </Button>
+        </div>
+          
+        <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
+          <Button
+            onClick={shareViaWhatsApp}
+            className="inline-flex items-center gap-2 text-white"
+            style={{ backgroundColor: "#25D366" }}
+          >
+            <MessageCircle className="h-5 w-5" />
+            <span>Compartilhar via WhatsApp</span>
+          </Button>
+          
+          <Button
+            onClick={copyUrl}
+            variant="outline"
+            className="inline-flex items-center gap-2"
+          >
+            <Link className="h-5 w-5" />
+            <span>Copiar Link</span>
+          </Button>
         </div>
         
         {posts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr mt-8">
             {posts.map((post) => (
               <div key={post.id} className="flex">
                 <CalendarEntry
@@ -372,7 +390,7 @@ const ClientView = () => {
             ))}
           </div>
         ) : (
-          <Card className="w-full">
+          <Card className="w-full mt-8">
             <CardContent className="pt-6">
               <div className="text-center py-12">
                 <h3 className="text-lg font-medium text-gray-700">
