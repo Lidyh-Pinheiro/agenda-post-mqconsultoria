@@ -31,6 +31,21 @@ const SharedClientAgenda = () => {
   const [posts, setPosts] = useState<CalendarPost[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Enhanced function to parse date strings consistently
+  const parseDate = (dateStr: string) => {
+    const parts = dateStr.split('/');
+    if (parts.length === 2) {
+      // Add current year for DD/MM format
+      const currentYear = new Date().getFullYear();
+      return new Date(currentYear, parseInt(parts[1]) - 1, parseInt(parts[0]));
+    } else if (parts.length === 3) {
+      // For DD/MM/YYYY format
+      return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    }
+    // Fallback to original string parsing
+    return new Date(dateStr.split('/').reverse().join('-'));
+  };
+  
   useEffect(() => {
     if (!clientId) {
       setLoading(false);
@@ -39,29 +54,52 @@ const SharedClientAgenda = () => {
     
     // Find the client
     const foundClient = settings.clients.find(c => c.id === clientId);
+    
     if (foundClient) {
       setClient(foundClient);
+      console.log("Found client:", foundClient.name);
       
       // Load the posts for this client
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         try {
           const allPosts = JSON.parse(storedPosts);
-          const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+          
+          // More robust filtering with additional logging
+          console.log("All posts:", allPosts);
+          console.log("Looking for clientId:", clientId);
+          
+          const clientPosts = allPosts.filter((post: CalendarPost) => {
+            const matches = post.clientId === clientId;
+            if (matches) {
+              console.log("Matched post:", post.title);
+            }
+            return matches;
+          });
           
           console.log('Client ID:', clientId);
           console.log('Total posts found:', allPosts.length);
           console.log('Filtered posts for client:', clientPosts.length);
           
           if (clientPosts.length === 0) {
-            console.log('No posts found for this client');
+            console.log('No posts found for this client. Client ID might not match or there are no posts.');
+            
+            // Additional check for malformed data
+            allPosts.forEach((post: CalendarPost) => {
+              console.log(`Post client ID: ${post.clientId}, Current client ID: ${clientId}, Match: ${post.clientId === clientId}`);
+            });
           }
           
           // Sort posts by date
           const sortedPosts = [...clientPosts].sort((a, b) => {
-            const dateA = new Date(a.date.split('/').reverse().join('-'));
-            const dateB = new Date(b.date.split('/').reverse().join('-'));
-            return dateA.getTime() - dateB.getTime();
+            try {
+              const dateA = parseDate(a.date);
+              const dateB = parseDate(b.date);
+              return dateA.getTime() - dateB.getTime();
+            } catch (err) {
+              console.error("Date parsing error:", err, a.date, b.date);
+              return 0;
+            }
           });
           
           setPosts(sortedPosts);
@@ -69,7 +107,11 @@ const SharedClientAgenda = () => {
           console.error('Error parsing stored posts:', error);
           toast.error('Erro ao carregar as postagens');
         }
+      } else {
+        console.log('No posts found in localStorage');
       }
+    } else {
+      console.log('Client not found with ID:', clientId);
     }
     setLoading(false);
   }, [clientId, settings.clients]);
@@ -139,7 +181,7 @@ const SharedClientAgenda = () => {
               style={{ borderColor: themeColor, color: themeColor }}
             >
               <Printer className="w-4 h-4" />
-              Imprimir
+              Compartilhar
             </Button>
             <Button
               onClick={copyPageLink}
@@ -181,6 +223,9 @@ const SharedClientAgenda = () => {
                 <h3 className="text-lg font-medium text-gray-700">
                   Nenhuma postagem disponível para visualização
                 </h3>
+                <p className="text-gray-500 mt-2">
+                  Não foram encontradas postagens para este cliente. Verifique se as postagens foram adicionadas ou se o link está correto.
+                </p>
               </div>
             </CardContent>
           </Card>
