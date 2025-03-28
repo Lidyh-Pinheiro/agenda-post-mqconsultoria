@@ -1,15 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, ChevronLeft, LogOut, Plus, Edit, Trash2, Filter, Share2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
-import { useSettings, Client } from '@/contexts/SettingsContext';
-import { format, isSameDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { TransitionLayout } from '@/components/TransitionLayout';
+import { useSettings, Client } from '@/contexts/SettingsContext';
+import { ArrowLeft, Calendar, Filter, Plus, Trash2, Share } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Header from '@/components/Header';
 import CalendarEntry from '@/components/CalendarEntry';
+import { Card } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Table, 
   TableBody, 
@@ -18,28 +20,13 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { 
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { toast } from "sonner";
+import { format, isSameDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import AddPostModal from '@/components/AddPostModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import ShareModal from '@/components/ShareModal';
 
-interface Post {
+interface CalendarPost {
   id: number;
   date: string;
   day: string;
@@ -56,54 +43,73 @@ interface Post {
 
 const ClientAgenda = () => {
   const { clientId } = useParams<{ clientId: string }>();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const navigate = useNavigate();
+  const { settings } = useSettings();
+  
+  const [client, setClient] = useState<Client | null>(null);
+  const [posts, setPosts] = useState<CalendarPost[]>([]);
+  const [visiblePosts, setVisiblePosts] = useState<CalendarPost[]>([]);
   const [filterMonth, setFilterMonth] = useState<string>(format(new Date(), 'MM'));
-  const [page, setPage] = useState(1);
-  const postsPerPage = 10;
-  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<CalendarPost[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
   const [addPostOpen, setAddPostOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState<number | null>(null);
   
-  const navigate = useNavigate();
-  const { clients } = useSettings();
-
-  const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
-    navigate('/login');
-  };
-
-  const { data: client, isLoading, isError } = useQuery({
-    queryKey: ['client', clientId],
-    queryFn: async () => {
-      // Find client from context instead of fetching from Supabase
-      const clientData = clients.find(c => c.id === clientId);
-      if (!clientData) {
-        throw new Error("Client not found");
-      }
-      return clientData;
-    },
-    enabled: !!clientId
-  });
-
+  // Find the client by ID
+  useEffect(() => {
+    if (!clientId) return;
+    
+    const foundClient = settings.clients.find(c => c.id === clientId);
+    if (foundClient) {
+      setClient(foundClient);
+    } else {
+      // Client not found, redirect to home
+      navigate('/');
+    }
+  }, [clientId, settings.clients, navigate]);
+  
   // Load posts from localStorage
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
+    if (storedPosts && clientId) {
       const allPosts = JSON.parse(storedPosts);
-      if (clientId) {
-        const clientPosts = allPosts.filter(
-          (post: Post) => post.clientId === clientId
-        );
-        setPosts(clientPosts);
-      }
+      const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+      setPosts(clientPosts);
     }
   }, [clientId]);
-
-  // Filter posts based on month
+  
+  // Save posts to localStorage
+  useEffect(() => {
+    if (posts.length > 0) {
+      const storedPosts = localStorage.getItem('calendarPosts');
+      if (storedPosts) {
+        const allPosts = JSON.parse(storedPosts);
+        
+        const otherPosts = allPosts.filter((p: CalendarPost) => 
+          !posts.some(newP => newP.id === p.id)
+        );
+        
+        localStorage.setItem('calendarPosts', JSON.stringify([...otherPosts, ...posts]));
+      } else {
+        localStorage.setItem('calendarPosts', JSON.stringify(posts));
+      }
+    }
+  }, [posts]);
+  
+  // Apply animation to posts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setVisiblePosts(posts);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [posts]);
+  
+  // Apply month filter to posts
   useEffect(() => {
     if (posts.length > 0) {
       if (filterMonth === 'all') {
@@ -117,10 +123,10 @@ const ClientAgenda = () => {
       }
     }
   }, [filterMonth, posts]);
-
-  const handleAddPost = (newPostData: Omit<Post, 'id'>) => {
+  
+  const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
     const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
-    const newPost: Post = {
+    const newPost: CalendarPost = {
       id: newId,
       ...newPostData,
       completed: false,
@@ -128,19 +134,9 @@ const ClientAgenda = () => {
       clientId: clientId
     };
     
-    // Add to local posts state
     setPosts(prev => [...prev, newPost]);
     
-    // Update in localStorage
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      localStorage.setItem('calendarPosts', JSON.stringify([...allPosts, newPost]));
-    } else {
-      localStorage.setItem('calendarPosts', JSON.stringify([newPost]));
-    }
-    
-    toast("Postagem adicionada com sucesso!", {
+    toast.success("Postagem adicionada com sucesso!", {
       description: `${newPost.date} - ${newPost.title}`,
       duration: 3000,
     });
@@ -154,21 +150,12 @@ const ClientAgenda = () => {
   const handleDeletePost = () => {
     if (postToDelete === null) return;
     
-    // Remove from local state
     setPosts(prev => prev.filter(post => post.id !== postToDelete));
-    
-    // Update localStorage
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const updatedPosts = allPosts.filter((post: Post) => post.id !== postToDelete);
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
-    }
     
     setDeleteDialogOpen(false);
     setPostToDelete(null);
     
-    toast("Postagem removida com sucesso!", {
+    toast.success("Postagem removida com sucesso!", {
       duration: 3000,
     });
   };
@@ -179,15 +166,15 @@ const ClientAgenda = () => {
       setAddPostOpen(true);
     }
   };
-
-  const handleDateChange = (date: Date) => {
-    setSelectedDate(date);
+  
+  const handleBackToHome = () => {
+    navigate('/');
   };
   
-  const handleSelectPost = (postId: number) => {
+  const handleViewPostDetail = (postId: number) => {
     navigate(`/client/${clientId}/post/${postId}`);
   };
-
+  
   const parsePostDate = (dateStr: string) => {
     const [day, month] = dateStr.split('/');
     const year = new Date().getFullYear();
@@ -201,132 +188,204 @@ const ClientAgenda = () => {
     });
   };
   
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    window.scrollTo({ top: document.getElementById('allPostsSection')?.offsetTop || 0, behavior: 'smooth' });
+  const handleFileUpload = async (postId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsUploading(postId);
+    const uploadedImageUrls: string[] = [];
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${postId}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${fileName}`;
+        
+        const { data, error } = await supabase.storage
+          .from('post_images')
+          .upload(filePath, file);
+          
+        if (error) {
+          throw error;
+        }
+        
+        const { data: urlData } = supabase.storage
+          .from('post_images')
+          .getPublicUrl(filePath);
+          
+        uploadedImageUrls.push(urlData.publicUrl);
+      }
+      
+      setPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          const updatedImages = [...(post.images || []), ...uploadedImageUrls];
+          return { ...post, images: updatedImages };
+        }
+        return post;
+      }));
+      
+      toast.success("Arquivo(s) adicionado(s) com sucesso!", {
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast.error("Erro ao fazer upload do arquivo.", {
+        description: "Tente novamente mais tarde.",
+        duration: 3000,
+      });
+    } finally {
+      setIsUploading(null);
+    }
   };
-
-  const paginatedPosts = filteredPosts.slice((page - 1) * postsPerPage, page * postsPerPage);
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
-  const themeColor = client ? client.themeColor : "#dc2626";
-
-  if (isLoading) {
-    return <div>Carregando...</div>;
+  
+  const handleToggleStatus = (postId: number) => {
+    setPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        const newStatus = !post.completed;
+        return { ...post, completed: newStatus };
+      }
+      return post;
+    }));
+    
+    toast.success("Status da postagem atualizado!", {
+      duration: 2000,
+    });
+  };
+  
+  if (!client) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Carregando...</p>
+      </div>
+    );
   }
-
-  if (isError || !client) {
-    return <div>Erro ao carregar os dados do cliente.</div>;
-  }
-
+  
   return (
     <div 
       className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
-      style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}10, white)` }}
+      style={{ backgroundImage: `linear-gradient(to bottom right, ${client.themeColor}10, white)` }}
     >
       <div 
         className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
-        style={{ backgroundColor: `${themeColor}20` }}
+        style={{ backgroundColor: `${client.themeColor}20` }}
       />
       <div 
         className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
-        style={{ backgroundColor: `${themeColor}20` }}
+        style={{ backgroundColor: `${client.themeColor}20` }}
       />
       
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-16">
         <TransitionLayout>
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate('/')}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Voltar
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                className="flex items-center gap-1"
-              >
-                <LogOut className="h-4 w-4" />
-                Sair
-              </Button>
-            </div>
-            <h1 className="text-2xl font-semibold">{client?.name}</h1>
+          <div className="mb-6 flex items-center">
+            <Button
+              onClick={handleBackToHome}
+              variant="ghost"
+              className="flex items-center text-gray-600 hover:text-gray-800"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar ao início
+            </Button>
           </div>
-
-          <div className="mb-8 flex justify-between items-center">
-            <h2 className="text-xl font-semibold flex items-center" style={{ color: themeColor }}>
-              <Calendar className="h-5 w-5 mr-2" />
-              Agenda de Postagens
-            </h2>
-            <div className="flex gap-2">
+          
+          <div className="flex justify-between items-center mb-8">
+            <Header 
+              title={client.name} 
+              subtitle="Agenda de Postagens" 
+              themeColor={client.themeColor}
+              showSettings={false}
+            />
+            <div className="flex space-x-2">
               <Button
                 onClick={() => setAddPostOpen(true)}
                 className="text-white flex items-center gap-2"
-                style={{ backgroundColor: themeColor }}
+                style={{ backgroundColor: client.themeColor }}
               >
                 <Plus className="w-4 h-4" />
                 Nova Postagem
               </Button>
               <Button
+                onClick={() => setShareModalOpen(true)}
                 variant="outline"
                 className="text-gray-700 border-gray-300 flex items-center gap-2"
-                onClick={() => setShareModalOpen(true)}
               >
-                <Share2 className="w-4 h-4" />
+                <Share className="w-4 h-4" />
                 Compartilhar
               </Button>
             </div>
           </div>
-
-          {/* Calendar entries grid */}
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            {posts.length > 0 ? (
-              posts.map((post, index) => (
-                <div 
-                  key={post.id}
-                  className="animate-scale-in"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
-                  <CalendarEntry
-                    date={post.date}
-                    day={post.dayOfWeek}
-                    title={post.title}
-                    type={post.postType}
-                    text={post.text}
-                    highlighted={true}
-                    themeColor={themeColor}
-                    completed={post.completed}
-                    onSelect={() => handleSelectPost(post.id)}
-                  />
-                </div>
-              ))
-            ) : (
-              <div className="col-span-full p-6 text-center bg-gray-50 rounded-lg border border-dashed">
-                <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-2" />
-                <p className="text-gray-500">Nenhuma postagem programada para este cliente.</p>
-                <Button 
-                  variant="outline" 
-                  className="mt-4"
-                  onClick={() => setAddPostOpen(true)}
-                >
-                  Adicionar Postagem
-                </Button>
+            {visiblePosts.map((post, index) => (
+              <div 
+                key={post.id}
+                className="animate-scale-in"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CalendarEntry
+                  date={post.date}
+                  day={post.dayOfWeek}
+                  title={post.title}
+                  type={post.postType}
+                  text={post.text}
+                  highlighted={true}
+                  themeColor={client.themeColor}
+                  completed={post.completed}
+                  onSelect={() => handleViewPostDetail(post.id)}
+                  onUpload={(e) => handleFileUpload(post.id, e)}
+                  onStatusChange={() => handleToggleStatus(post.id)}
+                  isUploading={isUploading === post.id}
+                />
               </div>
-            )}
+            ))}
           </div>
           
-          <div id="allPostsSection" className="mt-16">
+          <div className="mt-20">
+            <div className="flex justify-between items-center mb-8">
+              <h2 
+                className="text-2xl font-bold"
+                style={{ color: client.themeColor }}
+              >
+                Todas as Postagens
+              </h2>
+              
+              <div className="flex items-center space-x-2">
+                <Select 
+                  value={filterMonth} 
+                  onValueChange={setFilterMonth}
+                >
+                  <SelectTrigger 
+                    className="w-[140px] focus:ring-0 focus:ring-offset-0"
+                    style={{ borderColor: `${client.themeColor}40` }}
+                  >
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="01">Janeiro</SelectItem>
+                    <SelectItem value="02">Fevereiro</SelectItem>
+                    <SelectItem value="03">Março</SelectItem>
+                    <SelectItem value="04">Abril</SelectItem>
+                    <SelectItem value="05">Maio</SelectItem>
+                    <SelectItem value="06">Junho</SelectItem>
+                    <SelectItem value="07">Julho</SelectItem>
+                    <SelectItem value="08">Agosto</SelectItem>
+                    <SelectItem value="09">Setembro</SelectItem>
+                    <SelectItem value="10">Outubro</SelectItem>
+                    <SelectItem value="11">Novembro</SelectItem>
+                    <SelectItem value="12">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-1">
                 <Card className="p-4 shadow-md bg-white">
                   <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                     <Calendar 
                       className="w-5 h-5 mr-2"
-                      style={{ color: themeColor }} 
+                      style={{ color: client.themeColor }} 
                     />
                     Calendário de Postagens
                   </h3>
@@ -342,9 +401,9 @@ const ClientAgenda = () => {
                         }}
                         modifiersStyles={{
                           booked: {
-                            backgroundColor: `${themeColor}20`,
+                            backgroundColor: `${client.themeColor}20`,
                             borderRadius: '50%',
-                            color: themeColor,
+                            color: client.themeColor,
                             fontWeight: 'bold'
                           }
                         }}
@@ -360,39 +419,10 @@ const ClientAgenda = () => {
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                       <Filter 
                         className="w-5 h-5 mr-2"
-                        style={{ color: themeColor }} 
+                        style={{ color: client.themeColor }} 
                       />
                       Lista de Postagens
                     </h3>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-500">Filtrar por mês:</span>
-                      <Select 
-                        value={filterMonth} 
-                        onValueChange={setFilterMonth}
-                      >
-                        <SelectTrigger 
-                          className="w-[140px] focus:ring-0 focus:ring-offset-0"
-                          style={{ borderColor: `${themeColor}40` }}
-                        >
-                          <SelectValue placeholder="Selecione o mês" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          <SelectItem value="01">Janeiro</SelectItem>
-                          <SelectItem value="02">Fevereiro</SelectItem>
-                          <SelectItem value="03">Março</SelectItem>
-                          <SelectItem value="04">Abril</SelectItem>
-                          <SelectItem value="05">Maio</SelectItem>
-                          <SelectItem value="06">Junho</SelectItem>
-                          <SelectItem value="07">Julho</SelectItem>
-                          <SelectItem value="08">Agosto</SelectItem>
-                          <SelectItem value="09">Setembro</SelectItem>
-                          <SelectItem value="10">Outubro</SelectItem>
-                          <SelectItem value="11">Novembro</SelectItem>
-                          <SelectItem value="12">Dezembro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
 
                   <div className="overflow-auto">
@@ -407,19 +437,19 @@ const ClientAgenda = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedPosts.length > 0 ? (
-                          paginatedPosts.map((post) => (
+                        {filteredPosts.length > 0 ? (
+                          filteredPosts.map((post) => (
                             <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50">
-                              <TableCell className="font-medium" onClick={() => handleSelectPost(post.id)}>
+                              <TableCell className="font-medium" onClick={() => handleViewPostDetail(post.id)}>
                                 <div className="text-white text-xs font-medium py-1 px-2 rounded-full inline-flex"
-                                  style={{ backgroundColor: themeColor }}
+                                  style={{ backgroundColor: client.themeColor }}
                                 >
                                   {post.date}
                                 </div>
                               </TableCell>
-                              <TableCell onClick={() => handleSelectPost(post.id)}>{post.title}</TableCell>
-                              <TableCell onClick={() => handleSelectPost(post.id)}>{post.postType}</TableCell>
-                              <TableCell onClick={() => handleSelectPost(post.id)}>
+                              <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.title}</TableCell>
+                              <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.postType}</TableCell>
+                              <TableCell onClick={() => handleViewPostDetail(post.id)}>
                                 {post.completed ? (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                     Concluído
@@ -436,8 +466,8 @@ const ClientAgenda = () => {
                                     variant="ghost" 
                                     size="sm"
                                     className="hover:bg-gray-100"
-                                    style={{ color: themeColor }}
-                                    onClick={() => handleSelectPost(post.id)}
+                                    style={{ color: client.themeColor }}
+                                    onClick={() => handleViewPostDetail(post.id)}
                                   >
                                     Ver
                                   </Button>
@@ -466,45 +496,13 @@ const ClientAgenda = () => {
                       </TableBody>
                     </Table>
                   </div>
-                  
-                  {filteredPosts.length > postsPerPage && (
-                    <Pagination className="mt-4">
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious 
-                            onClick={() => page > 1 && handlePageChange(page - 1)}
-                            className={page <= 1 ? "pointer-events-none opacity-50" : ""}
-                          />
-                        </PaginationItem>
-                        
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
-                          <PaginationItem key={pageNum}>
-                            <PaginationLink
-                              isActive={pageNum === page}
-                              onClick={() => handlePageChange(pageNum)}
-                              style={pageNum === page ? { borderColor: themeColor, color: themeColor } : {}}
-                            >
-                              {pageNum}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-                        
-                        <PaginationItem>
-                          <PaginationNext 
-                            onClick={() => page < totalPages && handlePageChange(page + 1)}
-                            className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                  )}
                 </Card>
               </div>
             </div>
           </div>
         </TransitionLayout>
       </div>
-
+      
       <AddPostModal 
         open={addPostOpen}
         onOpenChange={setAddPostOpen}
@@ -523,7 +521,7 @@ const ClientAgenda = () => {
       <ShareModal 
         open={shareModalOpen} 
         onOpenChange={setShareModalOpen} 
-        clientId={clientId || null}
+        clientId={clientId}
       />
     </div>
   );

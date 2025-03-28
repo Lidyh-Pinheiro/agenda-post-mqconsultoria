@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { cn } from "@/lib/utils";
-import { Check } from 'lucide-react';
+import { Check, Upload, Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface CalendarEntryProps {
   date: string;
@@ -14,6 +15,9 @@ interface CalendarEntryProps {
   themeColor?: string;
   completed?: boolean;
   onSelect?: () => void;
+  onUpload?: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onStatusChange?: () => void;
+  isUploading?: boolean;
 }
 
 const CalendarEntry: React.FC<CalendarEntryProps> = ({
@@ -26,7 +30,10 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
   highlighted = false,
   themeColor = "#dc2626",
   completed = false,
-  onSelect
+  onSelect,
+  onUpload,
+  onStatusChange,
+  isUploading = false
 }) => {
   return (
     <div 
@@ -42,7 +49,6 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
       style={{
         borderColor: highlighted && !completed ? themeColor : ''
       }}
-      onClick={onSelect}
     >
       <div className="flex items-center mb-4">
         <div className={cn(
@@ -56,11 +62,29 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
           <span className="ml-1">{day}</span>
         </div>
         <div className="ml-auto flex items-center space-x-2">
-          {completed && (
+          {completed ? (
             <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
               <Check className="w-3 h-3 mr-1" />
               Concluído
             </span>
+          ) : (
+            <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+              Pendente
+            </span>
+          )}
+          {onStatusChange && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 text-xs px-2 py-1 h-auto"
+              style={{ 
+                borderColor: completed ? 'rgb(239 68 68)' : 'rgb(22 163 74)',
+                color: completed ? 'rgb(239 68 68)' : 'rgb(22 163 74)'
+              }}
+              onClick={onStatusChange}
+            >
+              {completed ? 'Marcar pendente' : 'Concluir'}
+            </Button>
           )}
           <span className="bg-neia-gray text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
             {type}
@@ -78,14 +102,38 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
         </p>
       </div>
       
+      {onUpload && (
+        <div className="mt-4 border-t border-gray-100 pt-4 flex flex-col">
+          <div className="flex items-center justify-between">
+            <label className="cursor-pointer inline-flex items-center text-gray-600 text-sm hover:text-gray-800">
+              <Upload className="w-4 h-4 mr-2" />
+              <span>Anexar arquivo</span>
+              <input
+                type="file"
+                className="hidden"
+                onChange={onUpload}
+                disabled={isUploading}
+              />
+            </label>
+            {isUploading && (
+              <span className="text-xs text-gray-500 animate-pulse">Enviando...</span>
+            )}
+          </div>
+        </div>
+      )}
+      
       {highlighted && (
-        <div className="mt-4 text-sm font-medium flex items-center"
-          style={{ color: themeColor }}
-        >
-          <span>Ver detalhes</span>
-          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+        <div className="mt-4 text-sm font-medium flex items-center justify-between">
+          <div
+            style={{ color: themeColor }}
+            onClick={onSelect}
+            className="cursor-pointer flex items-center"
+          >
+            <span>Ver detalhes</span>
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
         </div>
       )}
     </div>
