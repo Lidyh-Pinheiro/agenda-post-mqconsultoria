@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import ClientAgenda from "./pages/ClientAgenda";
 import ClientPostDetail from "./pages/ClientPostDetail";
 import Login from "./pages/Login";
+import SharedClientAgenda from "./pages/SharedClientAgenda";
 import { SettingsProvider } from "./contexts/SettingsContext";
 
 const queryClient = new QueryClient();
@@ -86,6 +87,8 @@ const App = () => {
                   </ProtectedRoute>
                 } 
               />
+              {/* Public shared agenda route - no authentication required */}
+              <Route path="/shared/client/:clientId" element={<SharedClientAgenda />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

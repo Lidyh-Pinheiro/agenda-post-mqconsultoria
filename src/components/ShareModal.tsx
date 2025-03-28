@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Facebook, Send, Copy, Download, Printer, Eye, Share } from 'lucide-react';
@@ -15,10 +16,27 @@ interface ShareModalProps {
   posts?: any[];
 }
 
+interface CalendarPost {
+  id: number;
+  date: string;
+  day: string;
+  dayOfWeek: string;
+  title: string;
+  type: string;
+  postType: string;
+  text: string;
+  completed?: boolean;
+  notes?: string;
+  images?: string[];
+  clientId?: string;
+  socialNetworks?: string[];
+}
+
 const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, posts = [] }) => {
   const { settings, generateClientShareLink } = useSettings();
   const [activeTab, setActiveTab] = useState<string>("link");
   const printableAreaRef = useRef<HTMLDivElement>(null);
+  const [clientPosts, setClientPosts] = useState<CalendarPost[]>([]);
   
   const client = clientId 
     ? settings.clients.find(c => c.id === clientId) 
@@ -28,6 +46,18 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   
   const themeColor = client ? client.themeColor : "#dc2626";
   const shareLink = generateClientShareLink(client.id);
+  
+  // Load posts from localStorage for this client
+  useEffect(() => {
+    if (clientId) {
+      const storedPosts = localStorage.getItem('calendarPosts');
+      if (storedPosts) {
+        const allPosts = JSON.parse(storedPosts);
+        const filteredPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+        setClientPosts(filteredPosts);
+      }
+    }
+  }, [clientId, open]);
   
   const shareViaWhatsApp = () => {
     const whatsappUrl = `https://wa.me/?text=Confira a agenda de postagens de ${client.name}: ${shareLink}`;
@@ -230,8 +260,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               style={{ minHeight: '280px' }}
             >
               <div ref={printableAreaRef} className="space-y-4">
-                {posts && posts.length > 0 ? (
-                  posts.map((post, index) => (
+                {clientPosts && clientPosts.length > 0 ? (
+                  clientPosts.map((post, index) => (
                     <div key={post.id} className="agenda-card">
                       <CalendarEntry
                         date={post.date}

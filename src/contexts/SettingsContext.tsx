@@ -173,7 +173,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const generateClientShareLink = (clientId: string) => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/client/${clientId}`;
+    return `${baseUrl}/shared/client/${clientId}`;
   };
 
   const updateClientPostsCount = (clientId: string, count: number) => {
