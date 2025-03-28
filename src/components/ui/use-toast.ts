@@ -2,8 +2,8 @@
 import { useToast as useHookToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 
-// Re-export elementos do hook de toast para manter compatibilidade
+// Re-export elements from the hook for compatibility
 export const useToast = useHookToast;
 
-// Exporta a função toast diretamente da biblioteca sonner
+// Export the toast function directly from sonner library
 export const toast = sonnerToast;

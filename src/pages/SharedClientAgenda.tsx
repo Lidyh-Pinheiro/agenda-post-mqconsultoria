@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Lock, MessageCircle, Eye, EyeOff } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { supabase, getFromLocalStorage } from '@/integrations/supabase/client';
 
 interface CalendarPost {
@@ -134,16 +135,10 @@ const SharedClientAgenda = () => {
       localStorage.setItem(`client_auth_${clientId}`, 'true');
       loadClientPosts(clientId as string);
       setError('');
-      toast({
-        title: "Acesso autorizado!",
-        variant: "default",
-      });
+      toast.success("Acesso autorizado!");
     } else {
       setError('Senha incorreta. Por favor, tente novamente.');
-      toast({
-        title: "Senha incorreta",
-        variant: "destructive",
-      });
+      toast.error("Senha incorreta");
     }
   };
   
