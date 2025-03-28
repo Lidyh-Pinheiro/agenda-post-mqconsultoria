@@ -43,7 +43,7 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
 }) => {
   // Helper function to get the icon component for a social network
   const getSocialIcon = (network: string) => {
-    switch (network) {
+    switch (network.toLowerCase()) {
       case 'facebook': return <Facebook className="w-4 h-4" />;
       case 'instagram': return <Instagram className="w-4 h-4" />;
       case 'twitter': return <Twitter className="w-4 h-4" />;
@@ -138,7 +138,7 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
         </p>
       </div>
       
-      {/* Display social media icons */}
+      {/* Display social media icons - fixed to always show when socialNetworks are provided */}
       {socialNetworks && socialNetworks.length > 0 && (
         <div className="mt-3 flex items-center space-x-2">
           {socialNetworks.map((network, idx) => (

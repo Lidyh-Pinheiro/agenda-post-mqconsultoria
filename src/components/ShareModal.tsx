@@ -163,13 +163,14 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
         <head>
           <title>Agenda de ${client.name}</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
             body { 
               font-family: 'Inter', sans-serif; 
               padding: 40px; 
               max-width: 1200px; 
               margin: 0 auto; 
               color: #333;
+              background-color: #f9f9f9;
             }
             .agenda-header { 
               text-align: center; 
@@ -181,12 +182,14 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               color: ${themeColor}; 
               font-size: 32px;
               margin-bottom: 8px;
+              font-weight: 700;
             }
             .agenda-header h2 {
               font-size: 24px;
               margin-top: 0;
               margin-bottom: 10px;
               color: #333;
+              font-weight: 600;
             }
             .agenda-header p {
               color: #666;
@@ -194,62 +197,97 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             }
             .card-container { 
               display: grid; 
-              grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
-              gap: 20px; 
+              grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
+              gap: 24px; 
             }
             .card { 
               border: 1px solid #e2e8f0; 
               border-radius: 12px; 
-              padding: 20px; 
-              margin-bottom: 20px; 
-              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+              padding: 24px; 
+              margin-bottom: 24px; 
+              box-shadow: 0 4px 10px rgba(0,0,0,0.05);
               background-color: white;
+              break-inside: avoid;
+              page-break-inside: avoid;
             }
             .card-date { 
               background-color: ${themeColor}; 
               color: white; 
               display: inline-block; 
-              padding: 6px 12px; 
+              padding: 8px 16px; 
               border-radius: 20px; 
-              font-weight: 600; 
-              margin-bottom: 15px; 
+              font-weight: 700; 
+              margin-bottom: 16px; 
               font-size: 14px;
             }
             .card-title { 
-              font-size: 18px; 
-              font-weight: 600; 
-              margin-bottom: 10px; 
+              font-size: 20px; 
+              font-weight: 700; 
+              margin-bottom: 12px; 
               color: #333;
             }
             .card-type { 
               background-color: #f1f5f9; 
               color: #64748b; 
-              padding: 4px 10px; 
+              padding: 6px 12px; 
               border-radius: 12px; 
               display: inline-block; 
-              font-size: 12px; 
-              margin-bottom: 12px; 
+              font-size: 13px; 
+              margin-bottom: 14px; 
+              font-weight: 600;
             }
             .card-text { 
               white-space: pre-line; 
               color: #4b5563;
-              line-height: 1.5;
+              line-height: 1.6;
+              font-size: 15px;
+            }
+            .social-icons {
+              display: flex;
+              gap: 8px;
+              margin-top: 16px;
+            }
+            .social-icon {
+              background-color: #f1f5f9;
+              color: #64748b;
+              width: 28px;
+              height: 28px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .color-block {
+              background-color: ${themeColor};
+              color: white;
+              font-weight: bold;
+              padding: 8px 16px;
+              border-radius: 8px;
             }
             .footer {
               text-align: center;
-              margin-top: 40px;
+              margin-top: 60px;
               padding-top: 20px;
               border-top: 1px solid #eaeaea;
               color: #666;
               font-size: 14px;
             }
             @media print {
+              body {
+                padding: 0;
+                background-color: white;
+              }
+              .card-container {
+                gap: 16px;
+              }
               .card { 
                 break-inside: avoid; 
                 page-break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #eaeaea;
               }
-              body {
-                padding: 0;
+              .page-break {
+                page-break-after: always;
               }
             }
           </style>
@@ -260,17 +298,51 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             <h2>${client.name}</h2>
             <p>${new Date().toLocaleDateString('pt-BR')}</p>
           </div>
+          
           <div class="card-container">
-            ${Array.from(printableArea.querySelectorAll('.agenda-card')).map(card => {
+            ${Array.from(printableArea.querySelectorAll('.agenda-card')).map((card, index) => {
               const cleanedCard = card.cloneNode(true) as HTMLElement;
               
+              // Extract data from the card
+              const dateEl = cleanedCard.querySelector('[style*="background-color"]');
+              const titleEl = cleanedCard.querySelector('h3');
+              const typeEl = cleanedCard.querySelector('.bg-gray-100.text-gray-700');
+              const textEl = cleanedCard.querySelector('p.text-gray-700');
+              const socialIconsEl = cleanedCard.querySelector('.mt-3.flex.items-center.space-x-2');
+              
               // Remove any buttons or interactive elements
-              const buttons = cleanedCard.querySelectorAll('button, svg, .cursor-pointer');
+              const buttons = cleanedCard.querySelectorAll('button, .cursor-pointer');
               buttons.forEach(button => button.parentNode?.removeChild(button));
               
-              return cleanedCard.outerHTML;
+              const date = dateEl ? dateEl.textContent : '';
+              const title = titleEl ? titleEl.textContent : '';
+              const type = typeEl ? typeEl.textContent : '';
+              const text = textEl ? textEl.textContent : '';
+              
+              return `
+                <div class="card">
+                  <div class="card-date">${date}</div>
+                  <div class="card-title">${title}</div>
+                  <div class="card-type">${type}</div>
+                  <div class="card-text">${text}</div>
+                  ${socialIconsEl ? `
+                    <div class="social-icons">
+                      ${Array.from(socialIconsEl.children).map(() => `
+                        <div class="social-icon">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                          </svg>
+                        </div>
+                      `).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
             }).join('')}
           </div>
+          
           <div class="footer">
             <p>© ${new Date().getFullYear()} ${settings.companyName || 'Agenda de Postagens'}</p>
           </div>
