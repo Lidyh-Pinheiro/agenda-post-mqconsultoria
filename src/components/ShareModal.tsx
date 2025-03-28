@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -48,7 +47,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   const themeColor = client ? client.themeColor : "#dc2626";
   const shareLink = generateClientShareLink(client.id);
   
-  // Load posts from localStorage for this client
   useEffect(() => {
     if (clientId) {
       const storedPosts = localStorage.getItem('calendarPosts');
@@ -60,7 +58,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
     }
   }, [clientId, open]);
   
-  // Generate image when opening preview tab
   useEffect(() => {
     if (activeTab === "preview" && open && printableAreaRef.current && !generatedImage) {
       generateImage();
@@ -85,7 +82,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   
   const shareViaWhatsApp = () => {
     if (generatedImage && activeTab === "preview") {
-      // Create a temporary anchor to download the image
       const a = document.createElement('a');
       a.href = generatedImage;
       a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -101,7 +97,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   
   const shareViaFacebook = () => {
     if (generatedImage && activeTab === "preview") {
-      // Create a temporary anchor to download the image
       const a = document.createElement('a');
       a.href = generatedImage;
       a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -117,7 +112,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   
   const shareViaEmail = () => {
     if (generatedImage && activeTab === "preview") {
-      // Create a temporary anchor to download the image
       const a = document.createElement('a');
       a.href = generatedImage;
       a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -135,7 +129,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   
   const copyToClipboard = () => {
     if (generatedImage && activeTab === "preview") {
-      // Create a temporary anchor to download the image
       const a = document.createElement('a');
       a.href = generatedImage;
       a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -170,13 +163,12 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               max-width: 1200px; 
               margin: 0 auto; 
               color: #333;
-              background-color: #f9f9f9;
+              background: linear-gradient(to bottom right, ${themeColor}15, white);
             }
             .agenda-header { 
               text-align: center; 
               margin-bottom: 40px; 
               padding-bottom: 20px;
-              border-bottom: 1px solid #eaeaea;
             }
             .agenda-header h1 { 
               color: ${themeColor}; 
@@ -202,12 +194,14 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               width: 100%;
             }
             .card { 
-              border: 1px solid #e2e8f0; 
+              border: 1px solid rgba(255, 255, 255, 0.3); 
               border-radius: 12px; 
               padding: 24px; 
               margin-bottom: 24px; 
               box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-              background-color: white;
+              background: rgba(255, 255, 255, 0.8);
+              backdrop-filter: blur(12px);
+              -webkit-backdrop-filter: blur(12px);
               break-inside: avoid;
               page-break-inside: avoid;
               overflow: hidden;
@@ -230,6 +224,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               color: #333;
               word-wrap: break-word;
               overflow-wrap: break-word;
+              max-width: 100%;
+              overflow: hidden;
             }
             .card-type { 
               background-color: #f1f5f9; 
@@ -250,6 +246,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               word-wrap: break-word;
               overflow-wrap: break-word;
               max-width: 100%;
+              overflow: hidden;
             }
             .social-icons {
               display: flex;
@@ -271,14 +268,13 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               text-align: center;
               margin-top: 60px;
               padding-top: 20px;
-              border-top: 1px solid #eaeaea;
               color: #666;
               font-size: 14px;
             }
             @media print {
               body {
+                background: linear-gradient(to bottom right, ${themeColor}15, white);
                 padding: 20px;
-                background-color: white;
               }
               .card-container {
                 display: grid;
@@ -287,10 +283,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 width: 100%;
               }
               .card { 
+                background: rgba(255, 255, 255, 0.8);
                 break-inside: avoid; 
                 page-break-inside: avoid;
-                box-shadow: none;
-                border: 1px solid #eaeaea;
+                border: 1px solid rgba(255, 255, 255, 0.3);
                 margin-bottom: 16px;
                 width: 100%;
                 overflow: hidden;
@@ -299,6 +295,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 max-width: 100%;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                text-align: justify;
               }
               .card-title {
                 max-width: 100%;
@@ -315,6 +312,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
           <div class="agenda-header">
             <h1>Agenda de Postagens</h1>
             <h2>${client.name}</h2>
+            <p>${client.description || "Confira abaixo as postagens planejadas"}</p>
             <p>${new Date().toLocaleDateString('pt-BR')}</p>
           </div>
           
@@ -368,6 +366,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
           </div>
           
           <div class="footer">
+            <p>Última atualização: ${new Date().toLocaleDateString('pt-BR')}</p>
             <p>© ${new Date().getFullYear()} ${settings.companyName || 'Agenda de Postagens'}</p>
           </div>
         </body>

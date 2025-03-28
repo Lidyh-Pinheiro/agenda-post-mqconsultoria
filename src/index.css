@@ -137,7 +137,7 @@
   body {
     font-family: 'Inter', sans-serif;
     color: #000;
-    background: #fff;
+    background-color: #fff;
     margin: 0;
     padding: 0;
   }
@@ -147,12 +147,13 @@
     break-inside: avoid;
     margin-bottom: 1.5rem;
     box-shadow: none !important;
-    border: 1px solid #e5e7eb !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
     transform: none !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
     display: block !important;
+    background: rgba(255, 255, 255, 0.8) !important;
   }
   
   .print\:page-break-inside-avoid {
@@ -184,7 +185,7 @@
   /* Fix grid layout for printing */
   .grid {
     display: grid !important;
-    grid-template-columns: repeat(1, 1fr) !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     gap: 1.5rem !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -237,5 +238,16 @@
     height: 2rem !important;
     background-color: #f3f4f6 !important;
     border-radius: 9999px !important;
+  }
+  
+  /* Background for print version */
+  @page {
+    margin: 1.5cm;
+    background: linear-gradient(to bottom right, rgba(220, 38, 38, 0.1), white);
+  }
+  
+  /* Ensure two columns for printing */
+  .print\:grid-cols-1 {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
 }
