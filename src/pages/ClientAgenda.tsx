@@ -331,7 +331,7 @@ const ClientAgenda = () => {
                 className="text-gray-700 border-gray-300 flex items-center gap-2"
               >
                 <Share className="w-4 h-4" />
-                Área de Cliente
+                Imprimir Agenda
               </Button>
             </div>
           </div>
