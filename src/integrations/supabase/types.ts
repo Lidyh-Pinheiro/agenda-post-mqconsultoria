@@ -9,7 +9,95 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          password: string | null
+          themecolor: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          password?: string | null
+          themecolor?: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          password?: string | null
+          themecolor?: string
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          clientid: string | null
+          completed: boolean | null
+          created_at: string | null
+          date: string
+          day: string
+          dayofweek: string
+          id: number
+          images: string[] | null
+          notes: string | null
+          posttype: string
+          socialnetworks: string[] | null
+          text: string | null
+          time: string | null
+          title: string
+          type: string | null
+        }
+        Insert: {
+          clientid?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          date: string
+          day: string
+          dayofweek: string
+          id?: number
+          images?: string[] | null
+          notes?: string | null
+          posttype: string
+          socialnetworks?: string[] | null
+          text?: string | null
+          time?: string | null
+          title: string
+          type?: string | null
+        }
+        Update: {
+          clientid?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          date?: string
+          day?: string
+          dayofweek?: string
+          id?: number
+          images?: string[] | null
+          notes?: string | null
+          posttype?: string
+          socialnetworks?: string[] | null
+          text?: string | null
+          time?: string | null
+          title?: string
+          type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_clientid_fkey"
+            columns: ["clientid"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
