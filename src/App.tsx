@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import AllPosts from "./pages/AllPosts";
 import NotFound from "./pages/NotFound";
 import { SettingsProvider } from "./contexts/SettingsContext";
+import ClientAgenda from "./pages/ClientAgenda";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/all-posts" element={<AllPosts />} />
+            <Route path="/client/:clientId" element={<ClientAgenda />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

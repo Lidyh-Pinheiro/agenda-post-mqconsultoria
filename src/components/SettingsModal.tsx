@@ -129,15 +129,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => 
               <div className="mt-6">
                 <label className="font-medium text-sm mb-2 block">Clientes Cadastrados</label>
                 {clients.length === 0 ? (
-                  <p className="text-gray-500 text-sm italic">Nenhum cliente cadastrado</p>
+                  <p className="text-gray-500 text-sm italic">Nenhum cliente cadastrado.</p>
                 ) : (
                   <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
                     {clients.map((client) => (
                       <div 
                         key={client.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${
-                          currentClient?.id === client.id ? 'bg-gray-100 border-gray-300' : 'border-gray-200'
-                        }`}
+                        className="flex items-center justify-between p-3 rounded-lg border border-gray-200"
                       >
                         <div className="flex items-center">
                           <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-medium">
