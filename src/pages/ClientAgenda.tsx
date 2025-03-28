@@ -38,6 +38,7 @@ interface CalendarPost {
   notes?: string;
   images?: string[];
   clientId?: string;
+  socialNetworks?: string[];
 }
 
 const ClientAgenda = () => {
@@ -371,6 +372,7 @@ const ClientAgenda = () => {
                   onUpload={(e) => handleFileUpload(post.id, e)}
                   onStatusChange={() => handleToggleStatus(post.id)}
                   isUploading={isUploading === post.id}
+                  socialNetworks={post.socialNetworks || []}
                 />
               </div>
             ))}
