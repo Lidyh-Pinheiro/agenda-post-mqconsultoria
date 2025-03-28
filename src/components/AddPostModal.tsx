@@ -44,6 +44,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
 
 interface AddPostModalProps {
   open: boolean;
@@ -56,6 +57,8 @@ interface AddPostModalProps {
     type: string;
     postType: string;
     text: string;
+    observation?: string;
+    socialNetworks?: string[];
   }) => void;
   initialDate?: Date;
   initialPost?: {
@@ -63,6 +66,8 @@ interface AddPostModalProps {
     title: string;
     type: string;
     text: string;
+    observation?: string;
+    socialNetworks?: string[];
   } | null;
 }
 
@@ -77,6 +82,13 @@ const POST_TYPES = [
   { value: 'Reflexão', label: 'Reflexão' },
 ];
 
+const SOCIAL_NETWORKS = [
+  { id: 'facebook', label: 'Facebook', icon: Facebook },
+  { id: 'instagram', label: 'Instagram', icon: Instagram },
+  { id: 'twitter', label: 'Twitter', icon: Twitter },
+  { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
+];
+
 const AddPostModal: React.FC<AddPostModalProps> = ({ 
   open, 
   onOpenChange, 
@@ -86,18 +98,26 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
+  const [observation, setObservation] = useState('');
   const [selectedPostTypes, setSelectedPostTypes] = useState<string[]>(['Feed']);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
+  const [selectedSocialNetworks, setSelectedSocialNetworks] = useState<string[]>(['instagram']);
 
   // Effect to handle initialPost for editing
   useEffect(() => {
     if (initialPost) {
       setTitle(initialPost.title);
       setText(initialPost.text);
+      setObservation(initialPost.observation || '');
       
       // Parse the type string to get individual post types
       const types = initialPost.type.split(' + ');
       setSelectedPostTypes(types);
+      
+      // Set social networks if available
+      if (initialPost.socialNetworks && initialPost.socialNetworks.length > 0) {
+        setSelectedSocialNetworks(initialPost.socialNetworks);
+      }
       
       // If date needs to be set from string (DD/MM)
       if (initialPost.date) {
@@ -109,7 +129,9 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
       // Reset form when not editing
       setTitle('');
       setText('');
+      setObservation('');
       setSelectedPostTypes(['Feed']);
+      setSelectedSocialNetworks(['instagram']);
       setSelectedDate(initialDate || new Date());
     }
   }, [initialPost, initialDate, open]);
@@ -137,13 +159,17 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
       title: title,
       type: typeString,
       postType: mainPostType,
-      text: text
+      text: text,
+      observation: observation,
+      socialNetworks: selectedSocialNetworks
     });
     
     // Reset form
     setTitle('');
     setText('');
+    setObservation('');
     setSelectedPostTypes(['Feed']);
+    setSelectedSocialNetworks(['instagram']);
     onOpenChange(false);
   };
 
@@ -152,6 +178,14 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
       current.includes(type)
         ? current.filter(t => t !== type)
         : [...current, type]
+    );
+  };
+
+  const toggleSocialNetwork = (id: string) => {
+    setSelectedSocialNetworks(current => 
+      current.includes(id)
+        ? current.filter(network => network !== id)
+        : [...current, id]
     );
   };
 
@@ -234,6 +268,32 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
           </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="social-networks" className="text-right text-sm font-medium">
+              Redes Sociais
+            </label>
+            <div className="col-span-3">
+              <div className="flex flex-wrap gap-3">
+                {SOCIAL_NETWORKS.map((network) => (
+                  <div key={network.id} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`checkbox-${network.id}`}
+                      checked={selectedSocialNetworks.includes(network.id)}
+                      onCheckedChange={() => toggleSocialNetwork(network.id)}
+                    />
+                    <Label 
+                      htmlFor={`checkbox-${network.id}`}
+                      className="flex items-center cursor-pointer"
+                    >
+                      <network.icon className="h-4 w-4 mr-1" />
+                      <span>{network.label}</span>
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="post-title" className="text-right text-sm font-medium">
               Título
             </label>
@@ -258,6 +318,21 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Digite o texto da postagem"
                 className="min-h-[100px]"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 items-start gap-4">
+            <label htmlFor="post-observation" className="text-right text-sm font-medium pt-2">
+              Observação
+            </label>
+            <div className="col-span-3">
+              <Textarea
+                id="post-observation"
+                value={observation}
+                onChange={(e) => setObservation(e.target.value)}
+                placeholder="Adicione observações ou instruções específicas"
+                className="min-h-[80px]"
               />
             </div>
           </div>

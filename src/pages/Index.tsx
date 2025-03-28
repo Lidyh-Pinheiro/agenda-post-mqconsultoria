@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
@@ -174,6 +173,10 @@ const Index = () => {
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  const handleShareModal = () => {
+    setShareModalOpen(true);
+  };
 
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
@@ -616,7 +619,7 @@ const Index = () => {
                     variant="ghost"
                     size="sm"
                     className="flex items-center gap-1 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShareModalOpen(true)}
+                    onClick={handleShareModal}
                   >
                     <Share className="h-4 w-4" />
                     <span className="text-sm">Compartilhar</span>
@@ -1028,6 +1031,7 @@ const Index = () => {
         open={shareModalOpen} 
         onOpenChange={setShareModalOpen} 
         clientId={selectedClient?.id || null}
+        posts={visiblePosts}
       />
     </div>
   );
