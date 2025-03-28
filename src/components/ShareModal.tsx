@@ -37,6 +37,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   const [activeTab, setActiveTab] = useState<string>("link");
   const printableAreaRef = useRef<HTMLDivElement>(null);
   const [clientPosts, setClientPosts] = useState<CalendarPost[]>([]);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   
   const client = clientId 
     ? settings.clients.find(c => c.id === clientId) 
@@ -59,52 +60,125 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
     }
   }, [clientId, open]);
   
-  const shareViaWhatsApp = () => {
-    const whatsappUrl = `https://wa.me/?text=Confira a agenda de postagens de ${client.name}: ${shareLink}`;
-    window.open(whatsappUrl, '_blank');
-    toast.success('Link preparado para compartilhar via WhatsApp');
-  };
+  // Generate image when opening preview tab
+  useEffect(() => {
+    if (activeTab === "preview" && open && printableAreaRef.current && !generatedImage) {
+      generateImage();
+    }
+  }, [activeTab, open]);
   
-  const shareViaFacebook = () => {
-    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}&quote=Confira a agenda de postagens de ${client.name}`;
-    window.open(facebookUrl, '_blank');
-    toast.success('Link preparado para compartilhar via Facebook');
-  };
-  
-  const shareViaEmail = () => {
-    const subject = `Agenda de Postagens de ${client.name}`;
-    const body = `Olá,\n\nGostaria de compartilhar a agenda de postagens de ${client.name}.\n\nAcesse: ${shareLink}\n\nAtenciosamente,\n${settings.companyName}`;
-    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailtoUrl;
-    toast.success('Preparado para enviar por email');
-  };
-  
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareLink);
-    toast.success('Link copiado para a área de transferência');
-  };
-  
-  const downloadAsPng = async () => {
+  const generateImage = async () => {
     if (!printableAreaRef.current) return;
     
     try {
-      toast.loading('Gerando imagem...');
       const canvas = await html2canvas(printableAreaRef.current, {
         scale: 2,
         backgroundColor: '#FFFFFF'
       });
       
-      const link = document.createElement('a');
-      link.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      
-      toast.dismiss();
-      toast.success('Imagem da agenda salva com sucesso!');
+      const imageUrl = canvas.toDataURL('image/png');
+      setGeneratedImage(imageUrl);
     } catch (error) {
       console.error('Erro ao gerar imagem:', error);
-      toast.dismiss();
-      toast.error('Erro ao gerar imagem da agenda');
+    }
+  };
+  
+  const shareViaWhatsApp = () => {
+    if (generatedImage && activeTab === "preview") {
+      // Create a temporary anchor to download the image
+      const a = document.createElement('a');
+      a.href = generatedImage;
+      a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      a.click();
+      
+      toast.success('Imagem salva para compartilhamento via WhatsApp');
+    } else {
+      const whatsappUrl = `https://wa.me/?text=Confira a agenda de postagens de ${client.name}: ${shareLink}`;
+      window.open(whatsappUrl, '_blank');
+      toast.success('Link preparado para compartilhar via WhatsApp');
+    }
+  };
+  
+  const shareViaFacebook = () => {
+    if (generatedImage && activeTab === "preview") {
+      // Create a temporary anchor to download the image
+      const a = document.createElement('a');
+      a.href = generatedImage;
+      a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      a.click();
+      
+      toast.success('Imagem salva para compartilhamento via Facebook');
+    } else {
+      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}&quote=Confira a agenda de postagens de ${client.name}`;
+      window.open(facebookUrl, '_blank');
+      toast.success('Link preparado para compartilhar via Facebook');
+    }
+  };
+  
+  const shareViaEmail = () => {
+    if (generatedImage && activeTab === "preview") {
+      // Create a temporary anchor to download the image
+      const a = document.createElement('a');
+      a.href = generatedImage;
+      a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      a.click();
+      
+      toast.success('Imagem salva para compartilhamento via email');
+    } else {
+      const subject = `Agenda de Postagens de ${client.name}`;
+      const body = `Olá,\n\nGostaria de compartilhar a agenda de postagens de ${client.name}.\n\nAcesse: ${shareLink}\n\nAtenciosamente,\n${settings.companyName}`;
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoUrl;
+      toast.success('Preparado para enviar por email');
+    }
+  };
+  
+  const copyToClipboard = () => {
+    if (generatedImage && activeTab === "preview") {
+      // Create a temporary anchor to download the image
+      const a = document.createElement('a');
+      a.href = generatedImage;
+      a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      a.click();
+      
+      toast.success('Imagem salva para compartilhamento');
+    } else {
+      navigator.clipboard.writeText(shareLink);
+      toast.success('Link copiado para a área de transferência');
+    }
+  };
+  
+  const downloadAsPng = async () => {
+    if (generatedImage) {
+      const link = document.createElement('a');
+      link.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      link.href = generatedImage;
+      link.click();
+      
+      toast.success('Imagem da agenda salva com sucesso!');
+    } else if (printableAreaRef.current) {
+      try {
+        toast.loading('Gerando imagem...');
+        const canvas = await html2canvas(printableAreaRef.current, {
+          scale: 2,
+          backgroundColor: '#FFFFFF'
+        });
+        
+        const imageUrl = canvas.toDataURL('image/png');
+        setGeneratedImage(imageUrl);
+        
+        const link = document.createElement('a');
+        link.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+        link.href = imageUrl;
+        link.click();
+        
+        toast.dismiss();
+        toast.success('Imagem da agenda salva com sucesso!');
+      } catch (error) {
+        console.error('Erro ao gerar imagem:', error);
+        toast.dismiss();
+        toast.error('Erro ao gerar imagem da agenda');
+      }
     }
   };
   
@@ -283,6 +357,42 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                   </div>
                 )}
               </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <Button 
+                onClick={shareViaWhatsApp}
+                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Salvar e Enviar
+              </Button>
+              
+              <Button 
+                onClick={shareViaFacebook}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Facebook className="w-4 h-4" />
+                Salvar e Postar
+              </Button>
+              
+              <Button 
+                onClick={shareViaEmail}
+                className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white"
+                variant="outline"
+              >
+                <Send className="w-4 h-4" />
+                Salvar e Enviar
+              </Button>
+              
+              <Button 
+                onClick={copyToClipboard}
+                variant="outline"
+                className="flex items-center justify-center gap-2"
+              >
+                <Copy className="w-4 h-4" />
+                Salvar Imagem
+              </Button>
             </div>
           </TabsContent>
         </Tabs>

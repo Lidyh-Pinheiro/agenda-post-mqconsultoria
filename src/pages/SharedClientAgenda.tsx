@@ -26,9 +26,13 @@ const SharedClientAgenda = () => {
   const { settings } = useSettings();
   const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<CalendarPost[]>([]);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId) {
+      setLoading(false);
+      return;
+    }
     
     // Find the client
     const foundClient = settings.clients.find(c => c.id === clientId);
@@ -51,7 +55,19 @@ const SharedClientAgenda = () => {
         setPosts(sortedPosts);
       }
     }
+    setLoading(false);
   }, [clientId, settings.clients]);
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-800 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando agenda...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (!client) {
     return (
