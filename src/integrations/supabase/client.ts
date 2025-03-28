@@ -9,7 +9,14 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: localStorage
+  }
+});
 
 // Helper function to check if Supabase tables exist
 export const checkSupabaseTables = async () => {
@@ -65,3 +72,45 @@ export const ensureStorageBucketExists = async () => {
     return false;
   }
 };
+
+// Function to save posts to localStorage as a fallback
+export const savePostsToLocalStorage = (posts, clientId) => {
+  try {
+    // Get existing posts from localStorage
+    const existingPostsJSON = localStorage.getItem('calendarPosts');
+    let existingPosts = [];
+    
+    if (existingPostsJSON) {
+      existingPosts = JSON.parse(existingPostsJSON);
+      
+      // Remove any posts for this client (to update them)
+      existingPosts = existingPosts.filter(post => post.clientId !== clientId);
+    }
+    
+    // Add the new/updated posts for this client
+    const updatedPosts = [...existingPosts, ...posts];
+    
+    // Save back to localStorage
+    localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    
+    return true;
+  } catch (error) {
+    console.error('Error saving posts to localStorage:', error);
+    return false;
+  }
+};
+
+// Function to get posts from localStorage by clientId
+export const getPostsFromLocalStorage = (clientId) => {
+  try {
+    const postsJSON = localStorage.getItem('calendarPosts');
+    if (!postsJSON) return [];
+    
+    const allPosts = JSON.parse(postsJSON);
+    return allPosts.filter(post => post.clientId === clientId);
+  } catch (error) {
+    console.error('Error getting posts from localStorage:', error);
+    return [];
+  }
+};
+
