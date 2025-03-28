@@ -20,7 +20,7 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, parse } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import AddPostModal from '@/components/AddPostModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
@@ -58,6 +58,7 @@ const ClientAgenda = () => {
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
+  const [editingPost, setEditingPost] = useState<CalendarPost | null>(null);
   
   // Find the client by ID
   useEffect(() => {
@@ -78,19 +79,21 @@ const ClientAgenda = () => {
     if (storedPosts && clientId) {
       const allPosts = JSON.parse(storedPosts);
       const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-      setPosts(clientPosts);
+      setPosts(sortPostsByDate(clientPosts));
     }
   }, [clientId]);
   
   // Save posts to localStorage
   useEffect(() => {
-    if (posts.length > 0) {
+    if (posts.length > 0 || postToDelete !== null) {
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         const allPosts = JSON.parse(storedPosts);
         
+        // Filter out both the client's old posts and any post being deleted
         const otherPosts = allPosts.filter((p: CalendarPost) => 
-          !posts.some(newP => newP.id === p.id)
+          p.clientId !== clientId || 
+          (postToDelete !== null && p.id === postToDelete)
         );
         
         localStorage.setItem('calendarPosts', JSON.stringify([...otherPosts, ...posts]));
@@ -98,7 +101,7 @@ const ClientAgenda = () => {
         localStorage.setItem('calendarPosts', JSON.stringify(posts));
       }
     }
-  }, [posts]);
+  }, [posts, clientId, postToDelete]);
   
   // Apply animation to posts
   useEffect(() => {
@@ -124,22 +127,52 @@ const ClientAgenda = () => {
     }
   }, [filterMonth, posts]);
   
-  const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
-    const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
-    const newPost: CalendarPost = {
-      id: newId,
-      ...newPostData,
-      completed: false,
-      notes: '',
-      clientId: clientId
-    };
-    
-    setPosts(prev => [...prev, newPost]);
-    
-    toast.success("Postagem adicionada com sucesso!", {
-      description: `${newPost.date} - ${newPost.title}`,
-      duration: 3000,
+  // Helper function to sort posts by date
+  const sortPostsByDate = (postsToSort: CalendarPost[]): CalendarPost[] => {
+    return [...postsToSort].sort((a, b) => {
+      // Parse dates in format DD/MM
+      const dateA = parse(a.date, 'dd/MM', new Date());
+      const dateB = parse(b.date, 'dd/MM', new Date());
+      
+      // Sort by date
+      return dateA.getTime() - dateB.getTime();
     });
+  };
+  
+  const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
+    if (editingPost) {
+      // Update existing post
+      const updatedPosts = posts.map(post => 
+        post.id === editingPost.id 
+          ? { ...post, ...newPostData, id: editingPost.id } 
+          : post
+      );
+      
+      setPosts(sortPostsByDate(updatedPosts));
+      setEditingPost(null);
+      
+      toast.success("Postagem atualizada com sucesso!", {
+        description: `${newPostData.date} - ${newPostData.title}`,
+        duration: 3000,
+      });
+    } else {
+      // Add new post
+      const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
+      const newPost: CalendarPost = {
+        id: newId,
+        ...newPostData,
+        completed: false,
+        notes: '',
+        clientId: clientId
+      };
+      
+      setPosts(sortPostsByDate([...posts, newPost]));
+      
+      toast.success("Postagem adicionada com sucesso!", {
+        description: `${newPost.date} - ${newPost.title}`,
+        duration: 3000,
+      });
+    }
   };
   
   const openDeleteConfirmation = (postId: number) => {
@@ -150,7 +183,16 @@ const ClientAgenda = () => {
   const handleDeletePost = () => {
     if (postToDelete === null) return;
     
+    // Remove from state
     setPosts(prev => prev.filter(post => post.id !== postToDelete));
+    
+    // Delete from localStorage directly
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts) {
+      const allPosts = JSON.parse(storedPosts);
+      const updatedPosts = allPosts.filter((p: CalendarPost) => p.id !== postToDelete);
+      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    }
     
     setDeleteDialogOpen(false);
     setPostToDelete(null);
@@ -163,6 +205,7 @@ const ClientAgenda = () => {
   const handleCalendarDateSelect = (date: Date | undefined) => {
     if (date) {
       setCalendarSelectedDate(date);
+      setEditingPost(null);
       setAddPostOpen(true);
     }
   };
@@ -173,6 +216,11 @@ const ClientAgenda = () => {
   
   const handleViewPostDetail = (postId: number) => {
     navigate(`/client/${clientId}/post/${postId}`);
+  };
+  
+  const handleEditPost = (post: CalendarPost) => {
+    setEditingPost(post);
+    setAddPostOpen(true);
   };
   
   const parsePostDate = (dateStr: string) => {
@@ -297,7 +345,10 @@ const ClientAgenda = () => {
             />
             <div className="flex space-x-2">
               <Button
-                onClick={() => setAddPostOpen(true)}
+                onClick={() => {
+                  setEditingPost(null);
+                  setAddPostOpen(true);
+                }}
                 className="text-white flex items-center gap-2"
                 style={{ backgroundColor: client.themeColor }}
               >
@@ -467,6 +518,15 @@ const ClientAgenda = () => {
                                     size="sm"
                                     className="hover:bg-gray-100"
                                     style={{ color: client.themeColor }}
+                                    onClick={() => handleEditPost(post)}
+                                  >
+                                    Editar
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="hover:bg-gray-100"
+                                    style={{ color: client.themeColor }}
                                     onClick={() => handleViewPostDetail(post.id)}
                                   >
                                     Ver
@@ -505,9 +565,13 @@ const ClientAgenda = () => {
       
       <AddPostModal 
         open={addPostOpen}
-        onOpenChange={setAddPostOpen}
+        onOpenChange={(open) => {
+          setAddPostOpen(open);
+          if (!open) setEditingPost(null);
+        }}
         onSave={handleAddPost}
         initialDate={calendarSelectedDate}
+        initialPost={editingPost}
       />
       
       <DeleteConfirmDialog

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon, X, CheckIcon } from 'lucide-react';
@@ -58,6 +58,12 @@ interface AddPostModalProps {
     text: string;
   }) => void;
   initialDate?: Date;
+  initialPost?: {
+    date: string;
+    title: string;
+    type: string;
+    text: string;
+  } | null;
 }
 
 const POST_TYPES = [
@@ -75,12 +81,38 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   open, 
   onOpenChange, 
   onSave,
-  initialDate
+  initialDate,
+  initialPost
 }) => {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [selectedPostTypes, setSelectedPostTypes] = useState<string[]>(['Feed']);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
+
+  // Effect to handle initialPost for editing
+  useEffect(() => {
+    if (initialPost) {
+      setTitle(initialPost.title);
+      setText(initialPost.text);
+      
+      // Parse the type string to get individual post types
+      const types = initialPost.type.split(' + ');
+      setSelectedPostTypes(types);
+      
+      // If date needs to be set from string (DD/MM)
+      if (initialPost.date) {
+        const [day, month] = initialPost.date.split('/');
+        const year = new Date().getFullYear();
+        setSelectedDate(new Date(year, parseInt(month) - 1, parseInt(day)));
+      }
+    } else {
+      // Reset form when not editing
+      setTitle('');
+      setText('');
+      setSelectedPostTypes(['Feed']);
+      setSelectedDate(initialDate || new Date());
+    }
+  }, [initialPost, initialDate, open]);
 
   const handleSave = () => {
     if (!title || !text || !selectedDate || selectedPostTypes.length === 0) {
@@ -127,7 +159,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Adicionar Nova Postagem</DialogTitle>
+          <DialogTitle>{initialPost ? 'Editar Postagem' : 'Adicionar Nova Postagem'}</DialogTitle>
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
@@ -235,7 +267,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSave}>Salvar</Button>
+          <Button onClick={handleSave}>{initialPost ? 'Atualizar' : 'Salvar'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
