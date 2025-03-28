@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -23,6 +22,20 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -30,9 +43,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { v4 as uuidv4 } from 'uuid';
-import { savePostToLocalStorage } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 interface AddPostModalProps {
   open: boolean;
@@ -57,7 +67,6 @@ interface AddPostModalProps {
     observation?: string;
     socialNetworks?: string[];
   } | null;
-  clientId?: string;
 }
 
 const POST_TYPES = [
@@ -102,8 +111,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   onOpenChange, 
   onSave,
   initialDate,
-  initialPost,
-  clientId
+  initialPost
 }) => {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -111,7 +119,6 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   const [selectedPostTypes, setSelectedPostTypes] = useState<string[]>(['Feed']);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
   const [selectedSocialNetworks, setSelectedSocialNetworks] = useState<string[]>(['instagram']);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (initialPost) {
@@ -141,13 +148,10 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     }
   }, [initialPost, initialDate, open]);
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!title || !text || !selectedDate || selectedPostTypes.length === 0) {
-      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-
-    setIsSubmitting(true);
 
     const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
     const shortDayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -157,41 +161,6 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     
     const typeString = selectedPostTypes.join(' + ');
     const mainPostType = selectedPostTypes[0];
-    
-    try {
-      if (clientId) {
-        // Create post object for localStorage
-        const postId = uuidv4();
-        const newPost = {
-          id: postId,
-          date: formattedDate,
-          day: dayNames[dayOfWeek],
-          dayOfWeek: shortDayNames[dayOfWeek],
-          title: title,
-          type: typeString,
-          postType: mainPostType,
-          text: text,
-          notes: observation || '',
-          socialNetworks: selectedSocialNetworks,
-          clientId: clientId,
-          completed: false
-        };
-        
-        // Save to localStorage
-        const stored = savePostToLocalStorage(newPost);
-        
-        if (stored) {
-          toast.success("Postagem adicionada com sucesso!");
-        } else {
-          throw new Error("Falha ao salvar postagem");
-        }
-      }
-    } catch (error) {
-      console.error('Error saving post:', error);
-      toast.error("Erro ao salvar postagem. Tente novamente.");
-    } finally {
-      setIsSubmitting(false);
-    }
     
     onSave({
       date: formattedDate,
@@ -386,9 +355,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={isSubmitting}>
-            {isSubmitting ? 'Salvando...' : initialPost ? 'Atualizar' : 'Salvar'}
-          </Button>
+          <Button onClick={handleSave}>{initialPost ? 'Atualizar' : 'Salvar'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

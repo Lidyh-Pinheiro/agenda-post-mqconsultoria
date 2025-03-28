@@ -1,23 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
+import { useSettings, Client } from '@/contexts/SettingsContext';
+import { ArrowLeft, Calendar, Filter, Plus, Trash2, Share } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import CalendarEntry from '@/components/CalendarEntry';
-import { toast } from 'sonner';
-import { Check, X, Upload, Image, Calendar, Edit, Save, ArrowLeft, Plus, Trash2, Share } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { supabase } from '@/integrations/supabase/client';
-import { useSettings } from '@/contexts/SettingsContext';
-import SettingsModal from '@/components/SettingsModal';
-import AddPostModal from '@/components/AddPostModal';
-import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
-import ShareModal from '@/components/ShareModal';
-import { format, isSameDay } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { 
   Table, 
   TableBody, 
@@ -26,24 +19,11 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Filter, FileDown } from 'lucide-react';
-import { 
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { checkSupabaseTables, ensureStorageBucketExists } from '@/integrations/supabase/client';
+import { format, isSameDay, parse } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import AddPostModal from '@/components/AddPostModal';
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
+import ShareModal from '@/components/ShareModal';
 
 interface CalendarPost {
   id: number;
@@ -64,102 +44,65 @@ interface CalendarPost {
 const ClientAgenda = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
-  const { settings, getClient } = useSettings();
-  const client = getClient(clientId);
-  const themeColor = client ? client.themeColor : "#dc2626";
+  const { settings } = useSettings();
   
-  const [selectedPost, setSelectedPost] = useState<CalendarPost | null>(null);
-  const [isDetailView, setIsDetailView] = useState(false);
-  const [visiblePosts, setVisiblePosts] = useState<CalendarPost[]>([]);
+  const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<CalendarPost[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [visiblePosts, setVisiblePosts] = useState<CalendarPost[]>([]);
   const [filterMonth, setFilterMonth] = useState<string>(format(new Date(), 'MM'));
+  const [filteredPosts, setFilteredPosts] = useState<CalendarPost[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [page, setPage] = useState(1);
-  const postsPerPage = 10;
-  
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
   const [addPostOpen, setAddPostOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
-  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
   const [shareModalOpen, setShareModalOpen] = useState(false);
-
+  const [isUploading, setIsUploading] = useState<number | null>(null);
+  const [editingPost, setEditingPost] = useState<CalendarPost | null>(null);
+  
   useEffect(() => {
-    const checkTables = async () => {
-      const tablesExist = await checkSupabaseTables();
-      const bucketExists = await ensureStorageBucketExists();
-      
-      if (!tablesExist || !bucketExists) {
-        console.warn('Some Supabase resources do not exist. This may affect functionality.');
-      }
-    };
+    if (!clientId) return;
     
-    checkTables();
-  }, []);
-
-  useEffect(() => {
-    if (!clientId) {
-      console.error("Client ID is missing.");
-      return;
+    const foundClient = settings.clients.find(c => c.id === clientId);
+    if (foundClient) {
+      setClient(foundClient);
+    } else {
+      navigate('/');
     }
-    
-    const fetchPosts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('calendar_posts')
-          .select('*')
-          .eq('client_id', clientId);
-          
-        if (error) {
-          console.error('Error fetching posts:', error);
-          toast.error("Erro ao carregar postagens", {
-            description: "Verifique sua conexão e tente novamente",
-            duration: 3000,
-          });
-          return;
-        }
-        
-        if (data) {
-          const enhancedPosts = await Promise.all(
-            data.map(async (post) => {
-              const { data: networksData } = await supabase
-                .from('post_social_networks')
-                .select('network_name')
-                .eq('post_id', post.id);
-                
-              return {
-                ...post,
-                id: post.id,
-                clientId: post.client_id,
-                dayOfWeek: post.day_of_week,
-                postType: post.post_type,
-                socialNetworks: networksData ? networksData.map(net => net.network_name) : []
-              };
-            })
-          );
-          
-          setPosts(enhancedPosts);
-        }
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-        toast.error("Erro ao carregar postagens", {
-          description: "Verifique sua conexão e tente novamente",
-          duration: 3000,
-        });
-      }
-    };
-    
-    fetchPosts();
+  }, [clientId, settings.clients, navigate]);
+  
+  useEffect(() => {
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts && clientId) {
+      const allPosts = JSON.parse(storedPosts);
+      const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+      setPosts(sortPostsByDate(clientPosts));
+    }
   }, [clientId]);
-
+  
+  useEffect(() => {
+    if (posts.length > 0 || postToDelete !== null) {
+      const storedPosts = localStorage.getItem('calendarPosts');
+      if (storedPosts) {
+        const allPosts = JSON.parse(storedPosts);
+        
+        const otherPosts = allPosts.filter((p: CalendarPost) => 
+          p.clientId !== clientId || 
+          (postToDelete !== null && p.id === postToDelete)
+        );
+        
+        localStorage.setItem('calendarPosts', JSON.stringify([...otherPosts, ...posts]));
+      } else {
+        localStorage.setItem('calendarPosts', JSON.stringify(posts));
+      }
+    }
+  }, [posts, clientId, postToDelete]);
+  
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisiblePosts(posts);
     }, 300);
-
+    
     return () => clearTimeout(timer);
   }, [posts]);
   
@@ -176,76 +119,45 @@ const ClientAgenda = () => {
       }
     }
   }, [filterMonth, posts]);
-
-  const [filteredPosts, setFilteredPosts] = useState<CalendarPost[]>([]);
-  const paginatedPosts = filteredPosts.slice((page - 1) * postsPerPage, page * postsPerPage);
-  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
-
-  const handleAddPost = async (newPostData: Omit<CalendarPost, 'id'>) => {
-    try {
-      const { data: newPost, error } = await supabase
-        .from('calendar_posts')
-        .insert({
-          client_id: clientId,
-          date: newPostData.date,
-          day: newPostData.day,
-          day_of_week: newPostData.dayOfWeek,
-          title: newPostData.title,
-          type: newPostData.type,
-          post_type: newPostData.postType,
-          text: newPostData.text,
-          completed: false,
-          notes: newPostData.notes || ''
-        })
-        .select()
-        .single();
-        
-      if (error) {
-        console.error('Error saving post:', error);
-        throw error;
-      }
+  
+  const sortPostsByDate = (postsToSort: CalendarPost[]): CalendarPost[] => {
+    return [...postsToSort].sort((a, b) => {
+      const dateA = parse(a.date, 'dd/MM', new Date());
+      const dateB = parse(b.date, 'dd/MM', new Date());
       
-      if (newPostData.socialNetworks && newPostData.socialNetworks.length > 0) {
-        const networksToInsert = newPostData.socialNetworks.map(network => ({
-          post_id: newPost.id,
-          network_name: network
-        }));
-        
-        const { error: networksError } = await supabase
-          .from('post_social_networks')
-          .insert(networksToInsert);
-          
-        if (networksError) {
-          console.error('Error saving social networks:', networksError);
-        }
-      }
+      return dateA.getTime() - dateB.getTime();
+    });
+  };
+  
+  const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
+    if (editingPost) {
+      const updatedPosts = posts.map(post => 
+        post.id === editingPost.id 
+          ? { ...post, ...newPostData, id: editingPost.id } 
+          : post
+      );
       
-      const createdPost: CalendarPost = {
-        id: newPost.id,
-        date: newPost.date,
-        day: newPost.day,
-        dayOfWeek: newPost.day_of_week,
-        title: newPost.title,
-        type: newPost.type,
-        postType: newPost.post_type,
-        text: newPost.text,
-        completed: newPost.completed,
-        notes: newPost.notes,
-        clientId: newPost.client_id,
-        socialNetworks: newPostData.socialNetworks
+      setPosts(sortPostsByDate(updatedPosts));
+      setEditingPost(null);
+      
+      toast.success("Postagem atualizada com sucesso!", {
+        description: `${newPostData.date} - ${newPostData.title}`,
+        duration: 3000,
+      });
+    } else {
+      const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
+      const newPost: CalendarPost = {
+        id: newId,
+        ...newPostData,
+        completed: false,
+        notes: '',
+        clientId: clientId
       };
       
-      setPosts(prev => [...prev, createdPost]);
+      setPosts(sortPostsByDate([...posts, newPost]));
       
       toast.success("Postagem adicionada com sucesso!", {
         description: `${newPost.date} - ${newPost.title}`,
-        duration: 3000,
-      });
-      
-    } catch (error) {
-      console.error('Error saving post:', error);
-      toast.error("Erro ao salvar postagem", {
-        description: "Verifique sua conexão e tente novamente",
         duration: 3000,
       });
     }
@@ -261,8 +173,11 @@ const ClientAgenda = () => {
     
     setPosts(prev => prev.filter(post => post.id !== postToDelete));
     
-    if (selectedPost && selectedPost.id === postToDelete) {
-      handleBackToCalendar();
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts) {
+      const allPosts = JSON.parse(storedPosts);
+      const updatedPosts = allPosts.filter((p: CalendarPost) => p.id !== postToDelete);
+      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
     }
     
     setDeleteDialogOpen(false);
@@ -276,10 +191,24 @@ const ClientAgenda = () => {
   const handleCalendarDateSelect = (date: Date | undefined) => {
     if (date) {
       setCalendarSelectedDate(date);
+      setEditingPost(null);
       setAddPostOpen(true);
     }
   };
-
+  
+  const handleBackToHome = () => {
+    navigate('/');
+  };
+  
+  const handleViewPostDetail = (postId: number) => {
+    navigate(`/client/${clientId}/post/${postId}`);
+  };
+  
+  const handleEditPost = (post: CalendarPost) => {
+    setEditingPost(post);
+    setAddPostOpen(true);
+  };
+  
   const parsePostDate = (dateStr: string) => {
     const [day, month] = dateStr.split('/');
     const year = new Date().getFullYear();
@@ -292,67 +221,12 @@ const ClientAgenda = () => {
       return isSameDay(postDate, date);
     });
   };
-
-  const handleSelectPost = (post: CalendarPost) => {
-    setSelectedPost(post);
-    setIsDetailView(true);
-    setIsEditing(false);
-    
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  };
   
-  const handleBackToCalendar = () => {
-    setIsDetailView(false);
-    setIsEditing(false);
-    
-    navigate(`/client/${clientId}`, { replace: true });
-    
-    setTimeout(() => {
-      setSelectedPost(null);
-      setEditedPost(null);
-    }, 300);
-  };
-
-  const handleCopyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast("Texto copiado para a área de transferência!", {
-      description: "Agora é só colar onde você precisar.",
-      duration: 3000,
-    });
-  };
-
-  const handleCompleteTask = (postId: number, completed: boolean) => {
-    setPosts(prev => prev.map(post => 
-      post.id === postId ? { ...post, completed } : post
-    ));
-    
-    toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
-      duration: 2000,
-    });
-  };
-
-  const handleUpdateNotes = (postId: number, notes: string) => {
-    setPosts(prev => {
-      const updatedPosts = prev.map(post => 
-        post.id === postId ? { ...post, notes } : post
-      );
-      
-      if (selectedPost && selectedPost.id === postId) {
-        setSelectedPost({ ...selectedPost, notes });
-      }
-      
-      return updatedPosts;
-    });
-  };
-
-  const handleImageUpload = async (postId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (postId: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     
-    setIsUploading(true);
+    setIsUploading(postId);
     const uploadedImageUrls: string[] = [];
     
     try {
@@ -380,628 +254,327 @@ const ClientAgenda = () => {
       setPosts(prev => prev.map(post => {
         if (post.id === postId) {
           const updatedImages = [...(post.images || []), ...uploadedImageUrls];
-          
-          if (selectedPost && selectedPost.id === postId) {
-            setSelectedPost({
-              ...selectedPost,
-              images: updatedImages
-            });
-            
-            if (editedPost) {
-              setEditedPost({
-                ...editedPost,
-                images: updatedImages
-              });
-            }
-          }
-          
           return { ...post, images: updatedImages };
         }
         return post;
       }));
       
-      toast("Imagem(ns) adicionada(s) com sucesso!", {
+      toast.success("Arquivo(s) adicionado(s) com sucesso!", {
         duration: 2000,
       });
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast("Erro ao fazer upload da imagem.", {
+      toast.error("Erro ao fazer upload do arquivo.", {
         description: "Tente novamente mais tarde.",
         duration: 3000,
       });
     } finally {
-      setIsUploading(false);
+      setIsUploading(null);
     }
   };
-
-  const handleRemoveImage = async (postId: number, imageIndex: number) => {
-    try {
-      const post = posts.find(p => p.id === postId);
-      if (!post || !post.images || !post.images[imageIndex]) return;
-      
-      const imageUrl = post.images[imageIndex];
-      
-      const urlParts = imageUrl.split('/');
-      const fileName = urlParts[urlParts.length - 1];
-      
-      if (imageUrl.includes('supabase')) {
-        const { error } = await supabase.storage
-          .from('post_images')
-          .remove([fileName]);
-          
-        if (error) {
-          console.error('Error removing image from storage:', error);
-        }
+  
+  const handleToggleStatus = (postId: number) => {
+    setPosts(prev => prev.map(post => {
+      if (post.id === postId) {
+        const newStatus = !post.completed;
+        return { ...post, completed: newStatus };
       }
-      
-      setPosts(prev => prev.map(post => {
-        if (post.id === postId && post.images) {
-          const updatedImages = [...post.images];
-          updatedImages.splice(imageIndex, 1);
-          
-          if (selectedPost && selectedPost.id === postId) {
-            setSelectedPost({
-              ...selectedPost,
-              images: updatedImages
-            });
-            
-            if (editedPost) {
-              setEditedPost({
-                ...editedPost,
-                images: updatedImages
-              });
-            }
-          }
-          
-          return { ...post, images: updatedImages };
-        }
-        return post;
-      }));
-
-      toast("Imagem removida!", {
-        duration: 2000,
-      });
-    } catch (error) {
-      console.error('Error removing image:', error);
-      toast("Erro ao remover imagem.", {
-        description: "Tente novamente mais tarde.",
-        duration: 3000,
-      });
-    }
-  };
-
-  const handleEditMode = () => {
-    setIsEditing(true);
-    setEditedPost(selectedPost ? {...selectedPost} : null);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setEditedPost(selectedPost);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editedPost) return;
+      return post;
+    }));
     
-    setPosts(prev => prev.map(post => 
-      post.id === editedPost.id ? editedPost : post
-    ));
-    
-    setSelectedPost(editedPost);
-    setIsEditing(false);
-    
-    toast("Alterações salvas com sucesso!", {
+    toast.success("Status da postagem atualizado!", {
       duration: 2000,
     });
   };
-
-  const handleBackToHome = () => {
-    navigate('/');
-  };
   
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-    window.scrollTo({ top: document.getElementById('allPostsSection')?.offsetTop || 0, behavior: 'smooth' });
-  };
-
-  const handleShareModal = () => {
-    setShareModalOpen(true);
-  };
-
-  return (
-    <>
-      <div 
-        className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
-        style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}10, white)` }}
-      >
-        <div 
-          className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
-          style={{ backgroundColor: `${themeColor}20` }}
-        />
-        <div 
-          className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
-          style={{ backgroundColor: `${themeColor}20` }}
-        />
-        
-        <div className="max-w-5xl mx-auto px-4 py-16">
-          <TransitionLayout>
-            {!isDetailView ? (
-              <>
-                <div className="mb-6 flex items-center">
-                  <Button
-                    onClick={handleBackToHome}
-                    variant="ghost"
-                    className="flex items-center text-gray-600 hover:text-gray-800"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Voltar ao início
-                  </Button>
-                </div>
-                
-                <div className="flex justify-between items-center mb-8">
-                  <Header 
-                    title="Agenda de Postagens" 
-                    subtitle={client ? client.name : settings.ownerName}
-                    themeColor={themeColor}
-                    showSettings={false}
-                    onOpenSettings={() => setSettingsOpen(true)}
-                  />
-                  <div className="flex space-x-2">
-                    <Button
-                      onClick={() => setAddPostOpen(true)}
-                      className="text-white flex items-center gap-2"
-                      style={{ backgroundColor: themeColor }}
-                    >
-                      <Plus className="w-4 h-4" />
-                      Nova Postagem
-                    </Button>
-                    <Button
-                      onClick={() => setSettingsOpen(true)}
-                      variant="outline"
-                      className="text-gray-700 border-gray-300 flex items-center gap-2"
-                    >
-                      Configurações
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                  {visiblePosts.map((post, index) => (
-                    <div 
-                      key={post.id}
-                      className="animate-scale-in"
-                      style={{ animationDelay: `${index * 100}ms` }}
-                    >
-                      <CalendarEntry
-                        date={post.date}
-                        day={post.dayOfWeek}
-                        title={post.title}
-                        type={post.postType}
-                        text={post.text}
-                        highlighted={true}
-                        themeColor={themeColor}
-                        completed={post.completed}
-                        onSelect={() => handleSelectPost(post)}
-                      />
-                    </div>
-                  ))}
-                </div>
-                
-                <div id="allPostsSection" className="mt-20">
-                  <div className="flex justify-between items-center mb-8">
-                    <h2 
-                      className="text-2xl font-bold"
-                      style={{ color: themeColor }}
-                    >
-                      Todas as Postagens
-                    </h2>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex items-center gap-1 text-gray-500 hover:text-gray-700"
-                      onClick={handleShareModal}
-                    >
-                      <Share className="h-4 w-4" />
-                      <span className="text-sm">Compartilhar</span>
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-1">
-                      <Card className="p-4 shadow-md bg-white">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                          <Calendar 
-                            className="w-5 h-5 mr-2"
-                            style={{ color: themeColor }} 
-                          />
-                          Calendário de Postagens
-                        </h3>
-                        <div className="bg-white rounded-lg shadow-sm p-1">
-                          <div className="calendar-container">
-                            <CalendarComponent
-                              mode="single"
-                              className="p-3 pointer-events-auto"
-                              selected={selectedDate}
-                              onSelect={handleCalendarDateSelect}
-                              modifiers={{
-                                booked: (date) => isDateWithPosts(date)
-                              }}
-                              modifiersStyles={{
-                                booked: {
-                                  backgroundColor: `${themeColor}20`,
-                                  borderRadius: '50%',
-                                  color: themeColor,
-                                  fontWeight: 'bold'
-                                }
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </Card>
-                    </div>
-
-                    <div className="lg:col-span-2">
-                      <Card className="p-6 shadow-md bg-white">
-                        <div className="flex justify-between items-center mb-6">
-                          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                            <Filter 
-                              className="w-5 h-5 mr-2"
-                              style={{ color: themeColor }} 
-                            />
-                            Lista de Postagens
-                          </h3>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-500">Filtrar por mês:</span>
-                            <Select 
-                              value={filterMonth} 
-                              onValueChange={setFilterMonth}
-                            >
-                              <SelectTrigger 
-                                className="w-[140px] focus:ring-0 focus:ring-offset-0"
-                                style={{ borderColor: `${themeColor}40` }}
-                              >
-                                <SelectValue placeholder="Selecione o mês" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">Todos</SelectItem>
-                                <SelectItem value="01">Janeiro</SelectItem>
-                                <SelectItem value="02">Fevereiro</SelectItem>
-                                <SelectItem value="03">Março</SelectItem>
-                                <SelectItem value="04">Abril</SelectItem>
-                                <SelectItem value="05">Maio</SelectItem>
-                                <SelectItem value="06">Junho</SelectItem>
-                                <SelectItem value="07">Julho</SelectItem>
-                                <SelectItem value="08">Agosto</SelectItem>
-                                <SelectItem value="09">Setembro</SelectItem>
-                                <SelectItem value="10">Outubro</SelectItem>
-                                <SelectItem value="11">Novembro</SelectItem>
-                                <SelectItem value="12">Dezembro</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
-                        <div className="overflow-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="w-[100px]">Data</TableHead>
-                                <TableHead>Título</TableHead>
-                                <TableHead>Tipo</TableHead>
-                                <TableHead className="w-[100px]">Status</TableHead>
-                                <TableHead className="text-right">Ações</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {paginatedPosts.length > 0 ? (
-                                paginatedPosts.map((post) => (
-                                  <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50">
-                                    <TableCell className="font-medium" onClick={() => handleSelectPost(post)}>
-                                      <div className="text-white text-xs font-medium py-1 px-2 rounded-full inline-flex"
-                                        style={{ backgroundColor: themeColor }}
-                                      >
-                                        {post.date}
-                                      </div>
-                                    </TableCell>
-                                    <TableCell onClick={() => handleSelectPost(post)}>{post.title}</TableCell>
-                                    <TableCell onClick={() => handleSelectPost(post)}>{post.postType}</TableCell>
-                                    <TableCell onClick={() => handleSelectPost(post)}>
-                                      {post.completed ? (
-                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                          Concluído
-                                        </span>
-                                      ) : (
-                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                          Pendente
-                                        </span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                      <div className="flex justify-end items-center space-x-2">
-                                        <Button 
-                                          variant="ghost" 
-                                          size="sm"
-                                          className="hover:bg-gray-100"
-                                          style={{ color: themeColor }}
-                                          onClick={() => handleSelectPost(post)}
-                                        >
-                                          Ver
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="hover:bg-red-100 text-red-600"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openDeleteConfirmation(post.id);
-                                          }}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              ) : (
-                                <TableRow>
-                                  <TableCell colSpan={5} className="text-center py-4 text-gray-500">
-                                    Nenhuma postagem encontrada para este mês.
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                        
-                        {filteredPosts.length > postsPerPage && (
-                          <Pagination className="mt-4">
-                            <PaginationContent>
-                              <PaginationItem>
-                                <PaginationPrevious 
-                                  onClick={() => page > 1 && handlePageChange(page - 1)}
-                                  className={page <= 1 ? "pointer-events-none opacity-50" : ""}
-                                />
-                              </PaginationItem>
-                              
-                              {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
-                                <PaginationItem key={pageNum}>
-                                  <PaginationLink
-                                    isActive={pageNum === page}
-                                    onClick={() => handlePageChange(pageNum)}
-                                    style={pageNum === page ? { borderColor: themeColor, color: themeColor } : {}}
-                                  >
-                                    {pageNum}
-                                  </PaginationLink>
-                                </PaginationItem>
-                              ))}
-                              
-                              <PaginationItem>
-                                <PaginationNext 
-                                  onClick={() => page < totalPages && handlePageChange(page + 1)}
-                                  className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
-                                />
-                              </PaginationItem>
-                            </PaginationContent>
-                          </Pagination>
-                        )}
-                      </Card>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : selectedPost ? (
-              <div className="animate-fade-in">
-                <button 
-                  onClick={handleBackToCalendar}
-                  className="mb-6 flex items-center transition-colors"
-                  style={{ color: themeColor }}
-                >
-                  <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Voltar ao calendário
-                </button>
-                
-                <div className="glass-card rounded-2xl p-8 shadow-xl border"
-                  style={{ borderColor: `${themeColor}40` }}
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    {isEditing ? (
-                      <Input 
-                        value={editedPost?.date || ''}
-                        onChange={(e) => setEditedPost(prev => prev ? {...prev, date: e.target.value} : null)}
-                        className="w-28 border-gray-200 focus-visible:ring-gray-400 text-white font-medium py-2 px-4 rounded-full"
-                        style={{ backgroundColor: themeColor }}
-                      />
-                    ) : (
-                      <div className="text-white font-medium py-2 px-4 rounded-full"
-                        style={{ backgroundColor: themeColor }}
-                      >
-                        {selectedPost.date} • {selectedPost.day}
-                      </div>
-                    )}
-                    
-                    {isEditing ? (
-                      <Input 
-                        value={editedPost?.type || ''}
-                        onChange={(e) => setEditedPost(prev => prev ? {...prev, type: e.target.value} : null)}
-                        className="w-64 border-gray-200 focus-visible:ring-gray-400 bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium"
-                      />
-                    ) : (
-                      <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
-                        {selectedPost.type}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between mb-4">
-                    {isEditing ? (
-                      <Input 
-                        value={editedPost?.title || ''}
-                        onChange={(e) => setEditedPost(prev => prev ? {...prev, title: e.target.value} : null)}
-                        className="text-2xl font-bold border-gray-200 focus-visible:ring-gray-400"
-                      />
-                    ) : (
-                      <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
-                        {selectedPost.title}
-                      </h2>
-                    )}
-                    
-                    <div className="flex items-center space-x-4">
-                      {!isEditing && (
-                        <Button
-                          onClick={handleEditMode}
-                          variant="outline"
-                          className="flex items-center gap-2"
-                          style={{ borderColor: `${themeColor}40`, color: themeColor }}
-                        >
-                          <Edit className="w-4 h-4" />
-                          Editar
-                        </Button>
-                      )}
-                      
-                      {isEditing && (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            onClick={handleCancelEdit}
-                            variant="outline"
-                            className="flex items-center gap-2 border-gray-200"
-                          >
-                            <X className="w-4 h-4" />
-                            Cancelar
-                          </Button>
-                          <Button
-                            onClick={handleSaveEdit}
-                            className="flex items-center gap-2 text-white"
-                            style={{ backgroundColor: themeColor }}
-                          >
-                            <Save className="w-4 h-4" />
-                            Salvar
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {isEditing ? (
-                    <Textarea 
-                      value={editedPost?.text || ''}
-                      onChange={(e) => setEditedPost(prev => prev ? {...prev, text: e.target.value} : null)}
-                      className="mt-6 text-gray-700 border-gray-200 focus-visible:ring-gray-400 min-h-[200px]"
-                    />
-                  ) : (
-                    <div className="mt-6 text-gray-700 whitespace-pre-line">
-                      {selectedPost.text}
-                      <Button
-                        onClick={() => handleCopyText(selectedPost.text)}
-                        variant="outline"
-                        size="sm"
-                        className="mt-4 text-xs"
-                      >
-                        Copiar texto
-                      </Button>
-                    </div>
-                  )}
-                  
-                  <div className="mt-10 pt-10 border-t border-gray-100">
-                    <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        Status da postagem
-                      </h3>
-                      <div className="flex items-center">
-                        <span className="mr-3 text-sm text-gray-600">
-                          {selectedPost.completed ? 'Concluído' : 'Pendente'}
-                        </span>
-                        <Checkbox 
-                          checked={selectedPost.completed}
-                          onCheckedChange={(checked) => handleCompleteTask(selectedPost.id, !!checked)}
-                          style={{ 
-                            borderColor: selectedPost.completed ? undefined : themeColor,
-                            backgroundColor: selectedPost.completed ? themeColor : undefined 
-                          }}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="mt-6">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                        Anotações
-                      </h3>
-                      <Textarea 
-                        value={selectedPost.notes}
-                        onChange={(e) => handleUpdateNotes(selectedPost.id, e.target.value)}
-                        placeholder="Adicionar notas sobre esta postagem..."
-                        className="min-h-[100px]"
-                      />
-                    </div>
-                    
-                    <div className="mt-6">
-                      <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                        Imagens
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedPost.images?.map((image, index) => (
-                          <div key={index} className="relative">
-                            <img src={image} alt={`Imagem ${index + 1}`} className="w-24 h-24 object-cover rounded-lg" />
-                            <button 
-                              onClick={() => handleRemoveImage(selectedPost.id, index)}
-                              className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="animate-fade-in">
-                <button 
-                  onClick={handleBackToCalendar}
-                  className="mb-6 flex items-center transition-colors"
-                  style={{ color: themeColor }}
-                >
-                  <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Voltar ao calendário
-                </button>
-              </div>
-            )}
-          </TransitionLayout>
-        </div>
+  if (!client) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Carregando...</p>
       </div>
+    );
+  }
+  
+  return (
+    <div 
+      className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
+      style={{ backgroundImage: `linear-gradient(to bottom right, ${client.themeColor}10, white)` }}
+    >
+      <div 
+        className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
+        style={{ backgroundColor: `${client.themeColor}20` }}
+      />
+      <div 
+        className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
+        style={{ backgroundColor: `${client.themeColor}20` }}
+      />
+      
+      <div className="max-w-5xl mx-auto px-4 py-16">
+        <TransitionLayout>
+          <div className="mb-6 flex items-center">
+            <Button
+              onClick={handleBackToHome}
+              variant="ghost"
+              className="flex items-center text-gray-600 hover:text-gray-800"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar ao início
+            </Button>
+          </div>
+          
+          <div className="flex justify-between items-center mb-8">
+            <Header 
+              title={client.name} 
+              subtitle="Agenda de Postagens" 
+              themeColor={client.themeColor}
+              showSettings={false}
+            />
+            <div className="flex space-x-2">
+              <Button
+                onClick={() => {
+                  setEditingPost(null);
+                  setAddPostOpen(true);
+                }}
+                className="text-white flex items-center gap-2"
+                style={{ backgroundColor: client.themeColor }}
+              >
+                <Plus className="w-4 h-4" />
+                Nova Postagem
+              </Button>
+              <Button
+                onClick={() => setShareModalOpen(true)}
+                variant="outline"
+                className="text-gray-700 border-gray-300 flex items-center gap-2"
+              >
+                <Share className="w-4 h-4" />
+                Compartilhar
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            {visiblePosts.map((post, index) => (
+              <div 
+                key={post.id}
+                className="animate-scale-in"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CalendarEntry
+                  date={post.date}
+                  day={post.dayOfWeek}
+                  title={post.title}
+                  type={post.postType}
+                  text={post.text}
+                  highlighted={true}
+                  themeColor={client.themeColor}
+                  completed={post.completed}
+                  onSelect={() => handleViewPostDetail(post.id)}
+                  onUpload={(e) => handleFileUpload(post.id, e)}
+                  onStatusChange={() => handleToggleStatus(post.id)}
+                  isUploading={isUploading === post.id}
+                  socialNetworks={post.socialNetworks || []}
+                />
+              </div>
+            ))}
+          </div>
+          
+          <div className="mt-20">
+            <div className="flex justify-between items-center mb-8">
+              <h2 
+                className="text-2xl font-bold"
+                style={{ color: client.themeColor }}
+              >
+                Todas as Postagens
+              </h2>
+              
+              <div className="flex items-center space-x-2">
+                <Select 
+                  value={filterMonth} 
+                  onValueChange={setFilterMonth}
+                >
+                  <SelectTrigger 
+                    className="w-[140px] focus:ring-0 focus:ring-offset-0"
+                    style={{ borderColor: `${client.themeColor}40` }}
+                  >
+                    <SelectValue placeholder="Selecione o mês" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="01">Janeiro</SelectItem>
+                    <SelectItem value="02">Fevereiro</SelectItem>
+                    <SelectItem value="03">Março</SelectItem>
+                    <SelectItem value="04">Abril</SelectItem>
+                    <SelectItem value="05">Maio</SelectItem>
+                    <SelectItem value="06">Junho</SelectItem>
+                    <SelectItem value="07">Julho</SelectItem>
+                    <SelectItem value="08">Agosto</SelectItem>
+                    <SelectItem value="09">Setembro</SelectItem>
+                    <SelectItem value="10">Outubro</SelectItem>
+                    <SelectItem value="11">Novembro</SelectItem>
+                    <SelectItem value="12">Dezembro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-1">
+                <Card className="p-4 shadow-md bg-white">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    <Calendar 
+                      className="w-5 h-5 mr-2"
+                      style={{ color: client.themeColor }} 
+                    />
+                    Calendário de Postagens
+                  </h3>
+                  <div className="bg-white rounded-lg shadow-sm p-1">
+                    <div className="calendar-container">
+                      <CalendarComponent
+                        mode="single"
+                        className="p-3 pointer-events-auto"
+                        selected={selectedDate}
+                        onSelect={handleCalendarDateSelect}
+                        modifiers={{
+                          booked: (date) => isDateWithPosts(date)
+                        }}
+                        modifiersStyles={{
+                          booked: {
+                            backgroundColor: `${client.themeColor}20`,
+                            borderRadius: '50%',
+                            color: client.themeColor,
+                            fontWeight: 'bold'
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </div>
 
+              <div className="lg:col-span-2">
+                <Card className="p-6 shadow-md bg-white">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                      <Filter 
+                        className="w-5 h-5 mr-2"
+                        style={{ color: client.themeColor }} 
+                      />
+                      Lista de Postagens
+                    </h3>
+                  </div>
+
+                  <div className="overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[100px]">Data</TableHead>
+                          <TableHead>Título</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead className="w-[100px]">Status</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredPosts.length > 0 ? (
+                          filteredPosts.map((post) => (
+                            <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50">
+                              <TableCell className="font-medium" onClick={() => handleViewPostDetail(post.id)}>
+                                <div className="text-white text-xs font-medium py-1 px-2 rounded-full inline-flex"
+                                  style={{ backgroundColor: client.themeColor }}
+                                >
+                                  {post.date}
+                                </div>
+                              </TableCell>
+                              <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.title}</TableCell>
+                              <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.postType}</TableCell>
+                              <TableCell onClick={() => handleViewPostDetail(post.id)}>
+                                {post.completed ? (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Concluído
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Pendente
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end items-center space-x-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="hover:bg-gray-100"
+                                    style={{ color: client.themeColor }}
+                                    onClick={() => handleEditPost(post)}
+                                  >
+                                    Editar
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="hover:bg-gray-100"
+                                    style={{ color: client.themeColor }}
+                                    onClick={() => handleViewPostDetail(post.id)}
+                                  >
+                                    Ver
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="hover:bg-red-100 text-red-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openDeleteConfirmation(post.id);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-gray-500">
+                              Nenhuma postagem encontrada para este mês.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </TransitionLayout>
+      </div>
+      
       <AddPostModal 
         open={addPostOpen}
-        onOpenChange={setAddPostOpen}
+        onOpenChange={(open) => {
+          setAddPostOpen(open);
+          if (!open) setEditingPost(null);
+        }}
         onSave={handleAddPost}
         initialDate={calendarSelectedDate}
-        clientId={clientId}
+        initialPost={editingPost}
       />
       
       <DeleteConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeletePost}
-        title="Remover postagem"
-        description="Tem certeza que deseja remover esta postagem? Esta ação não poderá ser desfeita."
+        title="Confirmar exclusão"
+        description="Tem certeza que deseja excluir esta postagem? Esta ação não pode ser desfeita."
       />
       
-      <ShareModal
-        open={shareModalOpen}
-        onOpenChange={setShareModalOpen}
+      <ShareModal 
+        open={shareModalOpen} 
+        onOpenChange={setShareModalOpen} 
         clientId={clientId}
       />
-      
-      <SettingsModal
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
-    </>
+    </div>
   );
 };
 

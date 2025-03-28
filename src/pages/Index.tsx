@@ -1030,7 +1030,8 @@ const Index = () => {
       <ShareModal 
         open={shareModalOpen} 
         onOpenChange={setShareModalOpen} 
-        clientId={selectedClient?.id}
+        clientId={selectedClient?.id || null}
+        posts={visiblePosts}
       />
     </div>
   );
