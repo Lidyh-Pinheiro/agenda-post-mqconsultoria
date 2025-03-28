@@ -106,8 +106,8 @@ const App = () => {
               />
               {/* Client view page - accessible without login */}
               <Route path="/client-view/:clientId" element={<ClientView />} />
-              {/* Redirect old routes to new one */}
-              <Route path="/shared/client/:clientId" element={<Navigate to="/client-view/:clientId" replace />} />
+              {/* Redirect old routes to new one - handle both patterns */}
+              <Route path="/shared/client/:clientId" element={<ClientView />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </SettingsProvider>

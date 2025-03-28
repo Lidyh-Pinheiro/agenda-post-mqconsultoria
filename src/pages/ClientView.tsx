@@ -29,7 +29,7 @@ interface CalendarPost {
 
 const ClientView = () => {
   const { clientId } = useParams<{ clientId: string }>();
-  const { settings } = useSettings();
+  const { settings, verifyClientPassword } = useSettings();
   const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<CalendarPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,21 +168,29 @@ const ClientView = () => {
     });
   };
   
-  const handleAuthenticate = () => {
-    if (!client || !password) return;
+  const handleAuthenticate = async () => {
+    if (!client || !password || !clientId) return;
     
     console.log('Authenticating with password:', password);
-    console.log('Client password:', client.password);
+    console.log('Client password (should be hidden in production):', client.password);
     
-    if (client.password === password) {
-      setAuthenticated(true);
-      localStorage.setItem(`client_auth_${clientId}`, 'true');
-      loadClientPosts(clientId as string);
-      setError('');
-      toast.success("Acesso autorizado!");
-    } else {
-      setError('Senha incorreta. Por favor, tente novamente.');
-      toast.error("Senha incorreta");
+    try {
+      const isValid = await verifyClientPassword(clientId, password);
+      
+      if (isValid) {
+        setAuthenticated(true);
+        localStorage.setItem(`client_auth_${clientId}`, 'true');
+        loadClientPosts(clientId);
+        setError('');
+        toast.success("Acesso autorizado!");
+      } else {
+        setError('Senha incorreta. Por favor, tente novamente.');
+        toast.error("Senha incorreta");
+      }
+    } catch (error) {
+      console.error('Authentication error:', error);
+      setError('Erro ao verificar senha. Por favor, tente novamente.');
+      toast.error("Erro de autenticação");
     }
   };
   
