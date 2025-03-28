@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -14,20 +15,21 @@ import PasswordConfirmDialog from '@/components/PasswordConfirmDialog';
 import { toast } from 'sonner';
 import { fetchClientById, fetchClientPosts } from '@/integrations/supabase/client';
 
+// Updated interface to match database column names
 interface CalendarPost {
   id: number;
   date: string;
   day: string;
-  dayofweek: string;
+  dayofweek: string; // Changed from dayOfWeek to match DB
   title: string;
   type: string;
-  posttype: string;
+  posttype: string; // Changed from postType to match DB
   text: string;
   completed?: boolean;
   notes?: string;
   images?: string[];
-  clientid?: string;
-  socialnetworks?: string[];
+  clientid?: string; // Changed from clientId to match DB
+  socialnetworks?: string[]; // Changed from socialNetworks to match DB
   month?: string;
   year?: string;
 }
@@ -42,9 +44,9 @@ const ClientView = () => {
   const [error, setError] = useState<string | null>(null);
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [passwordValue, setPasswordValue] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   
+  // Check if client exists and if it requires a password
   useEffect(() => {
     const checkClient = async () => {
       if (!clientId) return;
@@ -59,11 +61,13 @@ const ClientView = () => {
           return;
         }
         
+        // If client has a password, we need to verify it
         if (clientData.password) {
           setPasswordRequired(true);
           setPasswordDialogOpen(true);
           setLoading(false);
         } else {
+          // No password required, load client data
           setClient(clientData);
           loadClientPosts(clientId);
         }
@@ -77,6 +81,7 @@ const ClientView = () => {
     checkClient();
   }, [clientId]);
   
+  // Load posts for a client from Supabase
   const loadClientPosts = async (id: string) => {
     setLoading(true);
     
@@ -91,27 +96,30 @@ const ClientView = () => {
     }
   };
   
-  const handlePasswordVerify = async () => {
-    if (!clientId) return;
+  // Verify password and load client data
+  const handlePasswordVerify = async (password: string) => {
+    if (!clientId) return false;
     
     try {
-      const clientData = await fetchClientById(clientId, passwordValue);
+      const clientData = await fetchClientById(clientId, password);
       
       if (!clientData) {
         toast.error('Senha incorreta', {
           description: 'Por favor, tente novamente.'
         });
-        return;
+        return false;
       }
       
       setClient(clientData);
       setPasswordDialogOpen(false);
       loadClientPosts(clientId);
+      return true;
     } catch (err) {
       console.error('Error verifying password:', err);
       toast.error('Erro ao verificar senha', {
         description: 'Por favor, tente novamente mais tarde.'
       });
+      return false;
     }
   };
   
@@ -158,14 +166,13 @@ const ClientView = () => {
         open={passwordDialogOpen}
         onOpenChange={setPasswordDialogOpen}
         onConfirm={handlePasswordVerify}
-        passwordValue={passwordValue}
-        setPasswordValue={setPasswordValue}
         title="Acesso Protegido"
         description="Esta agenda está protegida. Por favor, digite a senha para acessar."
       />
     );
   }
   
+  // Ensure client exists before rendering
   if (!client) {
     return (
       <div className="flex items-center justify-center min-h-screen">

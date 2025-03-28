@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -15,20 +16,16 @@ interface CalendarPost {
   id: number;
   date: string;
   day: string;
-  dayofweek: string;
+  dayOfWeek: string;
   title: string;
   type: string;
-  posttype: string;
+  postType: string;
   text: string;
   completed?: boolean;
   notes?: string;
   images?: string[];
-  clientid?: string;
-  socialnetworks?: string[];
-  month?: string;
-  year?: string;
-  time?: string;
-  created_at?: string;
+  clientId?: string;
+  socialNetworks?: string[];
 }
 
 const ClientPostDetail = () => {
@@ -44,16 +41,19 @@ const ClientPostDetail = () => {
   const [deleteImageDialogOpen, setDeleteImageDialogOpen] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<number | null>(null);
   
+  // Carregar cliente
   useEffect(() => {
     if (!clientId) return;
     
     const loadClient = async () => {
       try {
+        // Primeiro tenta encontrar o cliente no contexto
         const contextClient = settings.clients.find(c => c.id === clientId);
         
         if (contextClient) {
           setClient(contextClient);
         } else {
+          // Se não encontrado no contexto, tenta buscar do Supabase
           const supabaseClient = await fetchClientById(clientId);
           if (supabaseClient) {
             setClient(supabaseClient);
@@ -71,6 +71,7 @@ const ClientPostDetail = () => {
     loadClient();
   }, [clientId, settings.clients, navigate]);
   
+  // Carregar post
   useEffect(() => {
     if (!postId || !clientId) return;
     

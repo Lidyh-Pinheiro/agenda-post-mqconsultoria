@@ -33,7 +33,7 @@ interface SettingsContextType {
   addClient: (name: string, themeColor: string, password: string) => string;
   createClient: (client: Partial<Client>) => void;
   updateClient: (id: string, name: string, themeColor: string, password?: string) => void;
-  deleteClient: (id: string, password?: string) => Promise<boolean>;
+  deleteClient: (id: string, password?: string) => boolean;
   selectClient: (id: string | null) => void;
   setSelectedClient: (id: string | null) => void;
   getSelectedClient: () => Client | null;
@@ -259,52 +259,33 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const deleteClient = async (id: string, password?: string): Promise<boolean> => {
+  const deleteClient = (id: string, password?: string) => {
     const client = settings.clients.find(client => client.id === id);
     
     if (!client || (password && client.password !== password)) {
       return false;
     }
     
-    try {
-      await deleteClientFromSupabase(id);
+    deleteClientFromSupabase(id);
+    
+    setSettings(prev => {
+      const newSettings = {
+        ...prev,
+        clients: prev.clients.filter(client => client.id !== id),
+      };
       
-      setSettings(prev => {
-        const newSettings = {
-          ...prev,
-          clients: prev.clients.filter(client => client.id !== id),
-        };
-        
-        if (prev.selectedClientId === id) {
-          newSettings.selectedClientId = null;
-        }
-        
-        return newSettings;
-      });
+      if (prev.selectedClientId === id) {
+        newSettings.selectedClientId = null;
+      }
       
-      return true;
-    } catch (error) {
-      console.error('Error deleting client:', error);
-      toast.error("Erro ao excluir cliente");
-      return false;
-    }
+      return newSettings;
+    });
+    
+    return true;
   };
   
   const deleteClientFromSupabase = async (id: string) => {
     try {
-      // First, delete all associated posts
-      const { error: postsError } = await supabase
-        .from('posts')
-        .delete()
-        .eq('clientid', id);
-      
-      if (postsError) {
-        console.error('Error deleting client posts from Supabase:', postsError);
-        toast.error("Erro ao excluir postagens do cliente");
-        throw postsError;
-      }
-      
-      // Then delete the client
       const { error } = await supabase
         .from('clients')
         .delete()
@@ -313,13 +294,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (error) {
         console.error('Error deleting client from Supabase:', error);
         toast.error("Erro ao excluir cliente do banco de dados");
-        throw error;
       }
-      
-      toast.success("Cliente e todas as suas postagens foram excluídos com sucesso");
     } catch (error) {
-      console.error('Error in deleteClientFromSupabase:', error);
-      throw error;
+      console.error('Error deleting client:', error);
     }
   };
 
