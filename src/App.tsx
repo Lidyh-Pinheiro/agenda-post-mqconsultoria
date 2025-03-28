@@ -12,6 +12,7 @@ import ClientPostDetail from "./pages/ClientPostDetail";
 import Login from "./pages/Login";
 import SharedClientAgenda from "./pages/SharedClientAgenda";
 import ClientSharedView from "./pages/ClientSharedView";
+import Admin from "./pages/Admin";
 import { SettingsProvider } from "./contexts/SettingsContext";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,22 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Admin route component
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAdmin = localStorage.getItem('isAdmin') === 'true';
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  
+  if (!isLoggedIn) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (!isAdmin) {
+    return <Navigate to="/" replace />;
   }
   
   return <>{children}</>;
@@ -86,6 +103,15 @@ const App = () => {
                   <ProtectedRoute>
                     <ClientPostDetail />
                   </ProtectedRoute>
+                } 
+              />
+              {/* Admin route */}
+              <Route 
+                path="/admin" 
+                element={
+                  <AdminRoute>
+                    <Admin />
+                  </AdminRoute>
                 } 
               />
               {/* Public shared agenda routes - no authentication required */}
