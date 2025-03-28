@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
@@ -9,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CalendarPost {
   id: number;
@@ -116,6 +118,7 @@ const Index = () => {
   const [isDetailView, setIsDetailView] = useState(false);
   const [visiblePosts, setVisiblePosts] = useState<CalendarPost[]>([]);
   const [posts, setPosts] = useState<CalendarPost[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
@@ -191,48 +194,118 @@ const Index = () => {
     });
   };
 
-  const handleImageUpload = (postId: number, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (postId: number, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-
-    const newImages: string[] = [];
     
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          const imageDataUrl = e.target.result as string;
+    setIsUploading(true);
+    const uploadedImageUrls: string[] = [];
+    
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${postId}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${fileName}`;
+        
+        const { data, error } = await supabase.storage
+          .from('post_images')
+          .upload(filePath, file);
           
-          setPosts(prev => prev.map(post => {
-            if (post.id === postId) {
-              const updatedImages = [...(post.images || []), imageDataUrl];
-              return { ...post, images: updatedImages };
-            }
-            return post;
-          }));
+        if (error) {
+          throw error;
         }
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    toast("Imagem(ns) adicionada(s) com sucesso!", {
-      duration: 2000,
-    });
+        
+        const { data: urlData } = supabase.storage
+          .from('post_images')
+          .getPublicUrl(filePath);
+          
+        uploadedImageUrls.push(urlData.publicUrl);
+      }
+      
+      setPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          const updatedImages = [...(post.images || []), ...uploadedImageUrls];
+          
+          // Update selectedPost if it's the current post
+          if (selectedPost && selectedPost.id === postId) {
+            setSelectedPost({
+              ...selectedPost,
+              images: updatedImages
+            });
+          }
+          
+          return { ...post, images: updatedImages };
+        }
+        return post;
+      }));
+      
+      toast("Imagem(ns) adicionada(s) com sucesso!", {
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast("Erro ao fazer upload da imagem.", {
+        description: "Tente novamente mais tarde.",
+        duration: 3000,
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handleRemoveImage = (postId: number, imageIndex: number) => {
-    setPosts(prev => prev.map(post => {
-      if (post.id === postId && post.images) {
-        const updatedImages = [...post.images];
-        updatedImages.splice(imageIndex, 1);
-        return { ...post, images: updatedImages };
+  const handleRemoveImage = async (postId: number, imageIndex: number) => {
+    try {
+      // Get the image URL to remove
+      const post = posts.find(p => p.id === postId);
+      if (!post || !post.images || !post.images[imageIndex]) return;
+      
+      const imageUrl = post.images[imageIndex];
+      
+      // Extract the file name from the URL
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      
+      // Only try to remove from storage if it appears to be a Supabase URL
+      if (imageUrl.includes('supabase')) {
+        const { error } = await supabase.storage
+          .from('post_images')
+          .remove([fileName]);
+          
+        if (error) {
+          console.error('Error removing image from storage:', error);
+        }
       }
-      return post;
-    }));
+      
+      // Update local state regardless of whether deletion from storage succeeded
+      setPosts(prev => prev.map(post => {
+        if (post.id === postId && post.images) {
+          const updatedImages = [...post.images];
+          updatedImages.splice(imageIndex, 1);
+          
+          // Update selectedPost if it's the current post
+          if (selectedPost && selectedPost.id === postId) {
+            setSelectedPost({
+              ...selectedPost,
+              images: updatedImages
+            });
+          }
+          
+          return { ...post, images: updatedImages };
+        }
+        return post;
+      }));
 
-    toast("Imagem removida!", {
-      duration: 2000,
-    });
+      toast("Imagem removida!", {
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error removing image:', error);
+      toast("Erro ao remover imagem.", {
+        description: "Tente novamente mais tarde.",
+        duration: 3000,
+      });
+    }
   };
 
   return (
@@ -245,7 +318,7 @@ const Index = () => {
           {!isDetailView ? (
             <>
               <Header 
-                title="Calendário de Postagens" 
+                title="Agenda de Postagens" 
                 subtitle="25/03 a 05/04 - Vereadora Neia Marques" 
                 useRedTheme={true}
               />
@@ -390,13 +463,20 @@ const Index = () => {
                       multiple
                       accept="image/*"
                       onChange={(e) => handleImageUpload(selectedPost.id, e)}
+                      disabled={isUploading}
                     />
                     <label
                       htmlFor={`file-upload-${selectedPost.id}`}
-                      className="inline-flex items-center justify-center text-sm font-medium gap-2 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg cursor-pointer transition-colors"
+                      className={`inline-flex items-center justify-center text-sm font-medium gap-2 ${isUploading ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'} text-white py-2 px-4 rounded-lg cursor-pointer transition-colors`}
                     >
-                      <Upload className="w-4 h-4" />
-                      Selecionar Imagens
+                      {isUploading ? (
+                        <>Carregando...</>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4" />
+                          Selecionar Imagens
+                        </>
+                      )}
                     </label>
                   </div>
                 </div>
@@ -415,7 +495,7 @@ const Index = () => {
         </TransitionLayout>
         
         <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p>Calendário de Postagens • Vereadora Neia Marques</p>
+          <p>Agenda de Postagens • Vereadora Neia Marques</p>
         </footer>
       </div>
     </div>
