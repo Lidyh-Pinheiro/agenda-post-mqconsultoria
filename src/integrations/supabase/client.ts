@@ -6,9 +6,7 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://jxhkpzdbfvefcapwgrwn.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4aGtwemRiZnZlZmNhcHdncnduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxMjUxNTIsImV4cCI6MjA1ODcwMTE1Mn0.OTGNN7ul4kcRCheobvNOIAz6WIAjP2ZsGNp5MtVGsbo";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
+// Create client but ensure all database operations fallback to localStorage
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
@@ -109,39 +107,111 @@ export const deletePostFromLocalStorage = (postId) => {
   }
 };
 
-// Helper function to check if Supabase tables exist - replaced with simple error check
-export const checkSupabaseTables = async () => {
+// Function to update post completion status
+export const updatePostCompletionStatus = (postId, completed) => {
   try {
-    // Try a simple query to see if Supabase is accessible
-    const { data, error } = await supabase.from('calendar_posts').select('count');
+    const allPosts = getAllPostsFromLocalStorage();
+    const updatedPosts = allPosts.map(post => {
+      if (post.id === postId) {
+        return { ...post, completed };
+      }
+      return post;
+    });
     
-    // If there's an error, Supabase is likely not set up correctly
-    if (error) {
-      console.warn('Supabase not properly configured, falling back to localStorage');
-      return false;
-    }
-    
+    localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
     return true;
   } catch (error) {
-    console.warn('Failed to check Supabase configuration:', error);
+    console.error('Error updating post completion status:', error);
     return false;
   }
 };
 
-// Helper to create a storage bucket if it doesn't exist - replaced with simple availability check
-export const ensureStorageBucketExists = async () => {
+// Function to update post notes
+export const updatePostNotes = (postId, notes) => {
   try {
-    // Simple check if storage is accessible
-    const { data, error } = await supabase.storage.getBucket('post_images');
+    const allPosts = getAllPostsFromLocalStorage();
+    const updatedPosts = allPosts.map(post => {
+      if (post.id === postId) {
+        return { ...post, notes };
+      }
+      return post;
+    });
     
-    if (error) {
-      console.warn('Supabase storage not properly configured');
-      return false;
-    }
-    
+    localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
     return true;
   } catch (error) {
-    console.warn('Supabase storage not accessible:', error);
+    console.error('Error updating post notes:', error);
     return false;
   }
+};
+
+// Function to update post content
+export const updatePostContent = (postId, updates) => {
+  try {
+    const allPosts = getAllPostsFromLocalStorage();
+    const updatedPosts = allPosts.map(post => {
+      if (post.id === postId) {
+        return { ...post, ...updates };
+      }
+      return post;
+    });
+    
+    localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    return true;
+  } catch (error) {
+    console.error('Error updating post content:', error);
+    return false;
+  }
+};
+
+// Function to add image to post
+export const addImageToPost = (postId, imageUrl) => {
+  try {
+    const allPosts = getAllPostsFromLocalStorage();
+    const updatedPosts = allPosts.map(post => {
+      if (post.id === postId) {
+        const currentImages = post.images || [];
+        return { ...post, images: [...currentImages, imageUrl] };
+      }
+      return post;
+    });
+    
+    localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    return true;
+  } catch (error) {
+    console.error('Error adding image to post:', error);
+    return false;
+  }
+};
+
+// Function to remove image from post
+export const removeImageFromPost = (postId, imageUrl) => {
+  try {
+    const allPosts = getAllPostsFromLocalStorage();
+    const updatedPosts = allPosts.map(post => {
+      if (post.id === postId) {
+        const filteredImages = (post.images || []).filter(img => img !== imageUrl);
+        return { ...post, images: filteredImages };
+      }
+      return post;
+    });
+    
+    localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    return true;
+  } catch (error) {
+    console.error('Error removing image from post:', error);
+    return false;
+  }
+};
+
+// These functions are now stubs that simulate the Supabase functionality
+// but don't actually connect to Supabase - they're only for type compatibility
+export const checkSupabaseTables = async () => {
+  console.warn('Supabase not properly configured, falling back to localStorage');
+  return false;
+};
+
+export const ensureStorageBucketExists = async () => {
+  console.warn('Supabase storage not properly configured');
+  return false;
 };

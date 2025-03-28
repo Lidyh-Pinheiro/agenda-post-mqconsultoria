@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import { getPostsFromLocalStorage } from '@/integrations/supabase/client';
 
-// Import refactored components
+// Import components
 import LoadingState from '@/components/shared-client/LoadingState';
 import ClientNotFound from '@/components/shared-client/ClientNotFound';
 import PasswordProtection from '@/components/shared-client/PasswordProtection';
@@ -79,7 +79,7 @@ const SharedClientAgenda = () => {
 
   const loadPosts = async (foundClient: Client) => {
     try {
-      // Get client posts from localStorage
+      // Get client posts from localStorage only
       const clientPosts = getPostsFromLocalStorage(clientId);
       console.log('Posts from localStorage:', clientPosts);
       

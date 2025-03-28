@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -22,20 +23,6 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -43,7 +30,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
+import { savePostToLocalStorage } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface AddPostModalProps {
@@ -172,48 +160,10 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     
     try {
       if (clientId) {
-        const { data, error } = await supabase
-          .from('calendar_posts')
-          .insert({
-            client_id: clientId,
-            date: formattedDate,
-            day: dayNames[dayOfWeek],
-            day_of_week: shortDayNames[dayOfWeek],
-            title: title,
-            type: typeString,
-            post_type: mainPostType,
-            text: text,
-            completed: false,
-            notes: observation || ''
-          })
-          .select()
-          .single();
-          
-        if (error) {
-          console.error('Error saving post to Supabase:', error);
-          throw error;
-        }
-        
-        if (selectedSocialNetworks.length > 0) {
-          const networksToInsert = selectedSocialNetworks.map(network => ({
-            post_id: data.id,
-            network_name: network
-          }));
-          
-          const { error: networksError } = await supabase
-            .from('post_social_networks')
-            .insert(networksToInsert);
-            
-          if (networksError) {
-            console.error('Error saving social networks:', networksError);
-          }
-        }
-        
-        const storedPosts = localStorage.getItem('calendarPosts') || '[]';
-        const posts = JSON.parse(storedPosts);
-        
-        posts.push({
-          id: data.id,
+        // Create post object for localStorage
+        const postId = uuidv4();
+        const newPost = {
+          id: postId,
           date: formattedDate,
           day: dayNames[dayOfWeek],
           dayOfWeek: shortDayNames[dayOfWeek],
@@ -221,15 +171,20 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
           type: typeString,
           postType: mainPostType,
           text: text,
-          observation: observation,
+          notes: observation || '',
           socialNetworks: selectedSocialNetworks,
           clientId: clientId,
           completed: false
-        });
+        };
         
-        localStorage.setItem('calendarPosts', JSON.stringify(posts));
+        // Save to localStorage
+        const stored = savePostToLocalStorage(newPost);
         
-        toast.success("Postagem adicionada com sucesso!");
+        if (stored) {
+          toast.success("Postagem adicionada com sucesso!");
+        } else {
+          throw new Error("Falha ao salvar postagem");
+        }
       }
     } catch (error) {
       console.error('Error saving post:', error);
@@ -431,7 +386,9 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSave}>{initialPost ? 'Atualizar' : 'Salvar'}</Button>
+          <Button onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? 'Salvando...' : initialPost ? 'Atualizar' : 'Salvar'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
