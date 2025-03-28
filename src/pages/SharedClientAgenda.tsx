@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Lock, MessageCircle, Eye, EyeOff } from 'lucide-react';
+import { Lock, MessageCircle, Eye, EyeOff, Printer } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
@@ -146,6 +145,10 @@ const SharedClientAgenda = () => {
     setShowPassword(!showPassword);
   };
   
+  const handlePrint = () => {
+    window.print();
+  };
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -263,7 +266,7 @@ const SharedClientAgenda = () => {
             {client.description || "Confira abaixo as postagens planejadas"}
           </p>
           
-          <div className="mt-4">
+          <div className="mt-4 flex items-center justify-center gap-3">
             <a 
               href="https://wa.me/91993299153" 
               target="_blank" 
@@ -273,6 +276,15 @@ const SharedClientAgenda = () => {
               <MessageCircle className="h-5 w-5" />
               <span>Suporte via WhatsApp</span>
             </a>
+            
+            <Button
+              onClick={handlePrint}
+              variant="outline"
+              className="inline-flex items-center gap-2 print:hidden"
+            >
+              <Printer className="h-5 w-5" />
+              <span>Imprimir Agenda</span>
+            </Button>
           </div>
         </div>
         
