@@ -88,7 +88,6 @@ const ClientAgenda = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
   useEffect(() => {
-    // Check if Supabase tables exist
     const checkTables = async () => {
       const tablesExist = await checkSupabaseTables();
       const bucketExists = await ensureStorageBucketExists();
@@ -206,7 +205,6 @@ const ClientAgenda = () => {
       throw error;
     }
     
-    // If social networks are selected, save them
     if (newPostData.socialNetworks && newPostData.socialNetworks.length > 0) {
       const networksToInsert = newPostData.socialNetworks.map(network => ({
         post_id: newPost.id,
@@ -222,7 +220,6 @@ const ClientAgenda = () => {
       }
     }
     
-    // Format the new post for the UI
     const createdPost: CalendarPost = {
       id: newPost.id,
       date: newPost.date,
@@ -505,6 +502,10 @@ const ClientAgenda = () => {
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
     window.scrollTo({ top: document.getElementById('allPostsSection')?.offsetTop || 0, behavior: 'smooth' });
+  };
+
+  const handleShareModal = () => {
+    setShareModalOpen(true);
   };
 
   return (
