@@ -37,17 +37,18 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   const [clientPosts, setClientPosts] = useState<CalendarPost[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   
+  // Find the client first - moved outside of the render function
   const client = clientId 
     ? settings.clients.find(c => c.id === clientId) 
     : null;
   
-  if (!client) return null;
-  
+  // Make sure we have sensible defaults if client is null
   const themeColor = client ? client.themeColor : "#dc2626";
-  const shareLink = generateClientShareLink(client.id);
-  
+  const shareLink = client ? generateClientShareLink(client.id) : "";
+
+  // Load client posts when the modal opens or clientId changes
   useEffect(() => {
-    if (clientId) {
+    if (open && clientId) {
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         const allPosts = JSON.parse(storedPosts);
@@ -57,11 +58,15 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
     }
   }, [clientId, open]);
   
+  // Generate image when the modal opens
   useEffect(() => {
     if (open && printableAreaRef.current && !generatedImage) {
       generateImage();
     }
-  }, [open]);
+  }, [open, generatedImage]);
+  
+  // If client is null, we don't want to render the modal
+  if (!client) return null;
   
   const generateImage = async () => {
     if (!printableAreaRef.current) return;
