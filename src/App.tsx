@@ -66,11 +66,11 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SettingsProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <SettingsProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route 
@@ -119,9 +119,9 @@ const App = () => {
               <Route path="/client-view/:clientId" element={<ClientSharedView />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </SettingsProvider>
+          </SettingsProvider>
+        </BrowserRouter>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 };
