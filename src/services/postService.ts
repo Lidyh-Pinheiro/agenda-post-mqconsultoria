@@ -3,6 +3,7 @@ import { firebaseDB } from "@/integrations/firebase/client";
 import { CalendarPost } from "@/types/calendar";
 import { sortPostsByDate } from "@/utils/calendarUtils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const loadClientPosts = async (clientId: string): Promise<CalendarPost[]> => {
   try {
