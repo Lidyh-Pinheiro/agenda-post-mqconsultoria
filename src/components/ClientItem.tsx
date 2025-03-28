@@ -73,7 +73,7 @@ const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect, onShare }) =>
               style={{ borderColor: client.themeColor, color: client.themeColor }}
             >
               <Share2 className="w-4 h-4 mr-1" />
-              Compartilhar
+              Área de Cliente
             </Button>
           )}
         </div>

@@ -32,7 +32,7 @@ const Admin = () => {
   useEffect(() => {
     // Calculate client stats
     const totalClients = clients.length;
-    const activeClients = clients.filter(client => !client.inactive).length;
+    const activeClients = clients.filter(client => client.active).length;
 
     setClientStats({
       total: totalClients,
@@ -264,7 +264,6 @@ const Admin = () => {
                     onEdit={handleEditClient}
                     onShare={handleShareClient}
                     onDelete={(clientId) => {}}
-                    showActions={true}
                   />
                 </CardContent>
               </Card>

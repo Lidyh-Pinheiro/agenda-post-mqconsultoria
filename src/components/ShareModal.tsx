@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Copy, Printer, Link } from 'lucide-react';
+import { Lock, Printer } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -82,12 +82,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
     } catch (error) {
       console.error('Erro ao gerar imagem:', error);
     }
-  };
-  
-  const shareViaWhatsApp = () => {
-    const whatsappUrl = `https://wa.me/?text=Confira a agenda de postagens de ${client.name}: ${shareUrl}`;
-    window.open(whatsappUrl, '_blank');
-    toast.success('Link preparado para compartilhar via WhatsApp');
   };
   
   const copyToClipboard = () => {
@@ -358,7 +352,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               </p>
               <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border mt-4">
                 <div className="flex-shrink-0 text-gray-400">
-                  <Link className="w-4 h-4" />
+                  <Lock className="w-4 h-4" />
                 </div>
                 <input 
                   type="text" 
@@ -366,32 +360,17 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                   value={shareUrl} 
                   className="flex-1 bg-transparent border-0 focus:outline-none text-sm"
                 />
-                <Button 
-                  onClick={copyToClipboard} 
-                  variant="outline" 
-                  size="sm"
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="grid grid-cols-1 gap-4 mt-6">
               <Button 
-                onClick={shareViaWhatsApp}
-                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white"
-              >
-                <MessageSquare className="w-4 h-4" />
-                WhatsApp
-              </Button>
-              
-              <Button 
-                onClick={copyToClipboard}
-                variant="outline"
+                onClick={printContent}
+                variant="outline" 
                 className="flex items-center justify-center gap-2"
               >
-                <Copy className="w-4 h-4" />
-                Copiar Link
+                <Printer className="w-4 h-4" />
+                Imprimir
               </Button>
             </div>
           </TabsContent>
@@ -441,25 +420,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                   </div>
                 )}
               </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <Button 
-                onClick={shareViaWhatsApp}
-                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Compartilhar
-              </Button>
-              
-              <Button 
-                onClick={copyToClipboard}
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-                Copiar Link
-              </Button>
             </div>
           </TabsContent>
         </Tabs>
