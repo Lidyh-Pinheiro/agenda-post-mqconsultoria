@@ -2,12 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Lock, MessageCircle } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { toast } from 'sonner';
 
 interface CalendarPost {
   id: number;
@@ -23,7 +19,6 @@ interface CalendarPost {
   images?: string[];
   clientId?: string;
   socialNetworks?: string[];
-  time?: string;
 }
 
 const SharedClientAgenda = () => {
@@ -32,9 +27,6 @@ const SharedClientAgenda = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [posts, setPosts] = useState<CalendarPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   
   useEffect(() => {
     if (!clientId) {
@@ -47,48 +39,24 @@ const SharedClientAgenda = () => {
     if (foundClient) {
       setClient(foundClient);
       
-      // Check if there's a stored authentication for this client
-      const storedAuth = localStorage.getItem(`client_auth_${clientId}`);
-      if (storedAuth) {
-        setAuthenticated(true);
-        loadClientPosts(clientId);
+      // Load the posts for this client
+      const storedPosts = localStorage.getItem('calendarPosts');
+      if (storedPosts) {
+        const allPosts = JSON.parse(storedPosts);
+        const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+        
+        // Sort posts by date
+        const sortedPosts = [...clientPosts].sort((a, b) => {
+          const dateA = new Date(a.date.split('/').reverse().join('/'));
+          const dateB = new Date(b.date.split('/').reverse().join('/'));
+          return dateA.getTime() - dateB.getTime();
+        });
+        
+        setPosts(sortedPosts);
       }
     }
     setLoading(false);
   }, [clientId, settings.clients]);
-  
-  const loadClientPosts = (clientId: string) => {
-    // Load the posts for this client
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-      
-      // Sort posts by date
-      const sortedPosts = [...clientPosts].sort((a, b) => {
-        const dateA = new Date(a.date.split('/').reverse().join('/'));
-        const dateB = new Date(b.date.split('/').reverse().join('/'));
-        return dateA.getTime() - dateB.getTime();
-      });
-      
-      setPosts(sortedPosts);
-    }
-  };
-  
-  const handleAuthenticate = () => {
-    if (!client || !password) return;
-    
-    if (client.password === password) {
-      setAuthenticated(true);
-      localStorage.setItem(`client_auth_${clientId}`, 'true');
-      loadClientPosts(clientId as string);
-      setError('');
-      toast.success("Acesso autorizado!");
-    } else {
-      setError('Senha incorreta. Por favor, tente novamente.');
-      toast.error("Senha incorreta");
-    }
-  };
   
   if (loading) {
     return (
@@ -118,60 +86,6 @@ const SharedClientAgenda = () => {
   
   const themeColor = client.themeColor || "#dc2626";
   
-  if (!authenticated) {
-    return (
-      <div 
-        className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center p-4"
-        style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}15, white)` }}
-      >
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 pb-8 px-6">
-            <div className="text-center mb-6">
-              <div 
-                className="w-16 h-16 rounded-full bg-opacity-20 flex items-center justify-center mx-auto mb-4"
-                style={{ backgroundColor: `${themeColor}30` }}
-              >
-                <Lock className="w-8 h-8" style={{ color: themeColor }} />
-              </div>
-              <h2 className="text-2xl font-semibold text-gray-800">Área do Cliente</h2>
-              <h3 className="text-xl font-medium mt-1">{client.name}</h3>
-              <p className="text-gray-600 mt-2">
-                Por favor, insira a senha para acessar sua agenda de postagens
-              </p>
-            </div>
-            
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 text-sm">
-                {error}
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Senha de acesso"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAuthenticate()}
-                  className="w-full"
-                />
-              </div>
-              
-              <Button 
-                onClick={handleAuthenticate}
-                className="w-full"
-                style={{ backgroundColor: themeColor }}
-              >
-                Acessar Agenda
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-  
   return (
     <div 
       className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-white"
@@ -191,18 +105,6 @@ const SharedClientAgenda = () => {
           <p className="text-gray-700 mt-2">
             {client.description || "Confira abaixo as postagens planejadas"}
           </p>
-          
-          <div className="mt-4">
-            <a 
-              href="https://wa.me/91993299153" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full transition-colors"
-            >
-              <MessageCircle className="h-5 w-5" />
-              <span>Suporte via WhatsApp</span>
-            </a>
-          </div>
         </div>
         
         {posts.length > 0 ? (
@@ -210,7 +112,7 @@ const SharedClientAgenda = () => {
             {posts.map((post) => (
               <div key={post.id} className="flex print:page-break-inside-avoid">
                 <CalendarEntry
-                  date={post.date + (post.time ? ` ${post.time}` : '')}
+                  date={post.date}
                   day={post.dayOfWeek}
                   title={post.title}
                   type={post.postType}
@@ -220,7 +122,7 @@ const SharedClientAgenda = () => {
                   completed={post.completed}
                   socialNetworks={post.socialNetworks}
                   preview={true}
-                  hideIcons={true}
+                  hideIcons={false}
                   className="print:break-inside-avoid print:shadow-none"
                 />
               </div>

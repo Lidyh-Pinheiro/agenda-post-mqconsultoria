@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Copy, Printer } from 'lucide-react';
+import { MessageSquare, Facebook, Send, Copy, Download, Printer, Eye } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -81,14 +81,64 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   };
   
   const shareViaWhatsApp = () => {
-    const whatsappUrl = `https://wa.me/?text=Confira a agenda de postagens de ${client.name}: ${shareLink}`;
-    window.open(whatsappUrl, '_blank');
-    toast.success('Link preparado para compartilhar via WhatsApp');
+    if (generatedImage && activeTab === "preview") {
+      const a = document.createElement('a');
+      a.href = generatedImage;
+      a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      a.click();
+      
+      toast.success('Imagem salva para compartilhamento via WhatsApp');
+    } else {
+      const whatsappUrl = `https://wa.me/?text=Confira a agenda de postagens de ${client.name}: ${shareLink}`;
+      window.open(whatsappUrl, '_blank');
+      toast.success('Link preparado para compartilhar via WhatsApp');
+    }
+  };
+  
+  const shareViaFacebook = () => {
+    if (generatedImage && activeTab === "preview") {
+      const a = document.createElement('a');
+      a.href = generatedImage;
+      a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      a.click();
+      
+      toast.success('Imagem salva para compartilhamento via Facebook');
+    } else {
+      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}&quote=Confira a agenda de postagens de ${client.name}`;
+      window.open(facebookUrl, '_blank');
+      toast.success('Link preparado para compartilhar via Facebook');
+    }
+  };
+  
+  const shareViaEmail = () => {
+    if (generatedImage && activeTab === "preview") {
+      const a = document.createElement('a');
+      a.href = generatedImage;
+      a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      a.click();
+      
+      toast.success('Imagem salva para compartilhamento via email');
+    } else {
+      const subject = `Agenda de Postagens de ${client.name}`;
+      const body = `Olá,\n\nGostaria de compartilhar a agenda de postagens de ${client.name}.\n\nAcesse: ${shareLink}\n\nAtenciosamente,\n${settings.companyName}`;
+      const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoUrl;
+      toast.success('Preparado para enviar por email');
+    }
   };
   
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareLink);
-    toast.success('Link copiado para a área de transferência');
+    if (generatedImage && activeTab === "preview") {
+      const a = document.createElement('a');
+      a.href = generatedImage;
+      a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
+      a.click();
+      
+      toast.success('Imagem salva para compartilhamento');
+    } else {
+      navigator.clipboard.writeText(shareLink);
+      toast.success('Link copiado para a área de transferência');
+    }
   };
   
   const printContent = () => {
@@ -340,7 +390,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
           </DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="link" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="link">Link</TabsTrigger>
             <TabsTrigger value="preview">Visualização</TabsTrigger>
@@ -370,6 +420,23 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               >
                 <MessageSquare className="w-4 h-4" />
                 WhatsApp
+              </Button>
+              
+              <Button 
+                onClick={shareViaFacebook}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Facebook className="w-4 h-4" />
+                Facebook
+              </Button>
+              
+              <Button 
+                onClick={shareViaEmail}
+                className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white"
+                variant="outline"
+              >
+                <Send className="w-4 h-4" />
+                Email
               </Button>
               
               <Button 
@@ -440,12 +507,29 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               </Button>
               
               <Button 
+                onClick={shareViaFacebook}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Facebook className="w-4 h-4" />
+                Postar
+              </Button>
+              
+              <Button 
+                onClick={shareViaEmail}
+                className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white"
+                variant="outline"
+              >
+                <Send className="w-4 h-4" />
+                Enviar
+              </Button>
+              
+              <Button 
                 onClick={copyToClipboard}
                 variant="outline"
                 className="flex items-center justify-center gap-2"
               >
                 <Copy className="w-4 h-4" />
-                Copiar Link
+                Copiar
               </Button>
             </div>
           </TabsContent>

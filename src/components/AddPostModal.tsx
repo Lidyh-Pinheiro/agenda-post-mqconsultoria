@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar as CalendarIcon, X, CheckIcon, Facebook, Instagram, Twitter, Linkedin, Youtube, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon, X, CheckIcon, Facebook, Instagram, Twitter, Linkedin, Youtube } from 'lucide-react';
 import { 
   Dialog, 
   DialogContent, 
@@ -58,7 +57,6 @@ interface AddPostModalProps {
     text: string;
     observation?: string;
     socialNetworks?: string[];
-    time?: string;
   }) => void;
   initialDate?: Date;
   initialPost?: {
@@ -68,7 +66,6 @@ interface AddPostModalProps {
     text: string;
     observation?: string;
     socialNetworks?: string[];
-    time?: string;
   } | null;
 }
 
@@ -122,14 +119,12 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   const [selectedPostTypes, setSelectedPostTypes] = useState<string[]>(['Feed']);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
   const [selectedSocialNetworks, setSelectedSocialNetworks] = useState<string[]>(['instagram']);
-  const [time, setTime] = useState('');
 
   useEffect(() => {
     if (initialPost) {
-      setTitle(initialPost.title || '');
-      setText(initialPost.text || '');
+      setTitle(initialPost.title);
+      setText(initialPost.text);
       setObservation(initialPost.observation || '');
-      setTime(initialPost.time || '');
       
       const types = initialPost.type.split(' + ');
       setSelectedPostTypes(types);
@@ -147,7 +142,6 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
       setTitle('');
       setText('');
       setObservation('');
-      setTime('');
       setSelectedPostTypes(['Feed']);
       setSelectedSocialNetworks(['instagram']);
       setSelectedDate(initialDate || new Date());
@@ -155,7 +149,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   }, [initialPost, initialDate, open]);
 
   const handleSave = () => {
-    if (!selectedDate) {
+    if (!title || !text || !selectedDate || selectedPostTypes.length === 0) {
       return;
     }
 
@@ -172,13 +166,12 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
       date: formattedDate,
       day: dayNames[dayOfWeek],
       dayOfWeek: shortDayNames[dayOfWeek],
-      title: title || 'Sem título',
+      title: title,
       type: typeString,
       postType: mainPostType,
-      text: text || '',
+      text: text,
       observation: observation,
-      socialNetworks: selectedSocialNetworks,
-      time: time
+      socialNetworks: selectedSocialNetworks
     });
     
     setTitle('');
@@ -186,7 +179,6 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     setObservation('');
     setSelectedPostTypes(['Feed']);
     setSelectedSocialNetworks(['instagram']);
-    setTime('');
     onOpenChange(false);
   };
 
@@ -216,7 +208,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="post-date" className="text-right text-sm font-medium">
-              Data*
+              Data
             </label>
             <div className="col-span-3">
               <Popover>
@@ -247,24 +239,6 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
                   />
                 </PopoverContent>
               </Popover>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="post-time" className="text-right text-sm font-medium">
-              Horário
-            </label>
-            <div className="col-span-3">
-              <div className="flex items-center">
-                <Clock className="mr-2 h-4 w-4 text-gray-400" />
-                <Input
-                  id="post-time"
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full"
-                />
-              </div>
             </div>
           </div>
           

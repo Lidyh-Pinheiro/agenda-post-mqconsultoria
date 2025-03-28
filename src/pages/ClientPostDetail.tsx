@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -8,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CalendarPost {
   id: number;
@@ -35,6 +37,7 @@ const ClientPostDetail = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
   
+  // Find the client by ID
   useEffect(() => {
     if (!clientId) return;
     
@@ -42,10 +45,12 @@ const ClientPostDetail = () => {
     if (foundClient) {
       setClient(foundClient);
     } else {
+      // Client not found, redirect to home
       navigate('/');
     }
   }, [clientId, settings.clients, navigate]);
   
+  // Load post from localStorage
   useEffect(() => {
     if (!postId) return;
     
@@ -58,6 +63,7 @@ const ClientPostDetail = () => {
         setPost(foundPost);
         setEditedPost({...foundPost});
       } else {
+        // Post not found, redirect back
         navigate(`/client/${clientId}`);
       }
     }
@@ -73,6 +79,7 @@ const ClientPostDetail = () => {
     const updatedPost = {...post, completed};
     setPost(updatedPost);
     
+    // Update in localStorage
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
       const allPosts = JSON.parse(storedPosts);
@@ -82,7 +89,9 @@ const ClientPostDetail = () => {
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
     }
     
-    toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada");
+    toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
+      duration: 2000,
+    });
   };
   
   const handleUpdateNotes = (notes: string) => {
@@ -91,6 +100,7 @@ const ClientPostDetail = () => {
     const updatedPost = {...post, notes};
     setPost(updatedPost);
     
+    // Update in localStorage
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
       const allPosts = JSON.parse(storedPosts);
@@ -113,14 +123,23 @@ const ClientPostDetail = () => {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const reader = new FileReader();
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${post.id}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${fileName}`;
         
-        const fileUrl = await new Promise<string>((resolve) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
-        });
+        const { data, error } = await supabase.storage
+          .from('post_images')
+          .upload(filePath, file);
+          
+        if (error) {
+          throw error;
+        }
         
-        uploadedImageUrls.push(fileUrl);
+        const { data: urlData } = supabase.storage
+          .from('post_images')
+          .getPublicUrl(filePath);
+          
+        uploadedImageUrls.push(urlData.publicUrl);
       }
       
       const updatedImages = [...(post.images || []), ...uploadedImageUrls];
@@ -129,6 +148,7 @@ const ClientPostDetail = () => {
       setPost(updatedPost);
       setEditedPost(updatedPost);
       
+      // Update in localStorage
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         const allPosts = JSON.parse(storedPosts);
@@ -138,11 +158,14 @@ const ClientPostDetail = () => {
         localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
       }
       
-      toast("Arquivo(s) adicionado(s) com sucesso!");
+      toast("Arquivo(s) adicionado(s) com sucesso!", {
+        duration: 2000,
+      });
     } catch (error) {
       console.error('Error uploading image:', error);
       toast("Erro ao fazer upload do arquivo.", {
-        description: "Tente novamente mais tarde."
+        description: "Tente novamente mais tarde.",
+        duration: 3000,
       });
     } finally {
       setIsUploading(false);
@@ -153,6 +176,21 @@ const ClientPostDetail = () => {
     if (!post || !post.images || !post.images[imageIndex]) return;
     
     try {
+      const imageUrl = post.images[imageIndex];
+      
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      
+      if (imageUrl.includes('supabase')) {
+        const { error } = await supabase.storage
+          .from('post_images')
+          .remove([fileName]);
+          
+        if (error) {
+          console.error('Error removing image from storage:', error);
+        }
+      }
+      
       const updatedImages = [...post.images];
       updatedImages.splice(imageIndex, 1);
       
@@ -160,6 +198,7 @@ const ClientPostDetail = () => {
       setPost(updatedPost);
       setEditedPost({...updatedPost});
       
+      // Update in localStorage
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         const allPosts = JSON.parse(storedPosts);
@@ -169,11 +208,14 @@ const ClientPostDetail = () => {
         localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
       }
 
-      toast("Imagem removida!");
+      toast("Imagem removida!", {
+        duration: 2000,
+      });
     } catch (error) {
       console.error('Error removing image:', error);
       toast("Erro ao remover imagem.", {
-        description: "Tente novamente mais tarde."
+        description: "Tente novamente mais tarde.",
+        duration: 3000,
       });
     }
   };
@@ -203,6 +245,7 @@ const ClientPostDetail = () => {
     setPost(updatedPost);
     setIsEditing(false);
     
+    // Update in localStorage
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
       const allPosts = JSON.parse(storedPosts);

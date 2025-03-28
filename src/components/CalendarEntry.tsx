@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { cn } from "@/lib/utils";
-import { Check, Upload, Save, Facebook, Instagram, Twitter, Linkedin, Youtube, MessageCircle } from 'lucide-react';
+import { Check, Upload, Save, Facebook, Instagram, Twitter, Linkedin, Youtube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface CalendarEntryProps {
