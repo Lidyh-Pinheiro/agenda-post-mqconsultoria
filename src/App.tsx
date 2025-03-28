@@ -65,10 +65,10 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <SettingsProvider>
+        <SettingsProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route 
@@ -110,8 +110,8 @@ const App = () => {
               <Route path="/shared/client/:clientId" element={<ClientView />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </SettingsProvider>
-        </BrowserRouter>
+          </BrowserRouter>
+        </SettingsProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
