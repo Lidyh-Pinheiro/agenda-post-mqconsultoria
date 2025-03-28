@@ -123,6 +123,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   const [selectedPostTypes, setSelectedPostTypes] = useState<string[]>(['Feed']);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
   const [selectedSocialNetworks, setSelectedSocialNetworks] = useState<string[]>(['instagram']);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (initialPost) {
@@ -157,6 +158,8 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
+
+    setIsSubmitting(true);
 
     const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
     const shortDayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -205,9 +208,34 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
             console.error('Error saving social networks:', networksError);
           }
         }
+        
+        const storedPosts = localStorage.getItem('calendarPosts') || '[]';
+        const posts = JSON.parse(storedPosts);
+        
+        posts.push({
+          id: data.id,
+          date: formattedDate,
+          day: dayNames[dayOfWeek],
+          dayOfWeek: shortDayNames[dayOfWeek],
+          title: title,
+          type: typeString,
+          postType: mainPostType,
+          text: text,
+          observation: observation,
+          socialNetworks: selectedSocialNetworks,
+          clientId: clientId,
+          completed: false
+        });
+        
+        localStorage.setItem('calendarPosts', JSON.stringify(posts));
+        
+        toast.success("Postagem adicionada com sucesso!");
       }
     } catch (error) {
       console.error('Error saving post:', error);
+      toast.error("Erro ao salvar postagem. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
     }
     
     onSave({

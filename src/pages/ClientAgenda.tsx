@@ -43,6 +43,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { checkSupabaseTables, ensureStorageBucketExists } from '@/integrations/supabase/client';
 
 interface CalendarPost {
   id: number;
@@ -86,9 +87,19 @@ const ClientAgenda = () => {
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
-  const handleShareModal = () => {
-    setShareModalOpen(true);
-  };
+  useEffect(() => {
+    // Check if Supabase tables exist
+    const checkTables = async () => {
+      const tablesExist = await checkSupabaseTables();
+      const bucketExists = await ensureStorageBucketExists();
+      
+      if (!tablesExist || !bucketExists) {
+        console.warn('Some Supabase resources do not exist. This may affect functionality.');
+      }
+    };
+    
+    checkTables();
+  }, []);
 
   useEffect(() => {
     if (!clientId) {

@@ -7,6 +7,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
 import CalendarEntry from '@/components/CalendarEntry';
 import html2canvas from 'html2canvas';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ShareModalProps {
   open: boolean;
@@ -49,12 +50,71 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   // Load client posts when the modal opens or clientId changes
   useEffect(() => {
     if (open && clientId) {
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        const filteredPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-        setClientPosts(filteredPosts);
-      }
+      const fetchPostsFromSupabase = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('calendar_posts')
+            .select(`
+              id,
+              date,
+              day,
+              day_of_week,
+              title,
+              type,
+              post_type,
+              text,
+              completed,
+              notes,
+              post_social_networks(network_name)
+            `)
+            .eq('client_id', clientId);
+            
+          if (error) {
+            throw error;
+          }
+          
+          if (data && data.length > 0) {
+            const formattedPosts = data.map(post => ({
+              id: post.id,
+              date: post.date,
+              day: post.day,
+              dayOfWeek: post.day_of_week,
+              title: post.title,
+              type: post.type,
+              postType: post.post_type,
+              text: post.text,
+              completed: post.completed,
+              notes: post.notes,
+              clientId: clientId,
+              socialNetworks: post.post_social_networks ? 
+                post.post_social_networks.map((network: any) => network.network_name) : []
+            }));
+            setClientPosts(formattedPosts);
+          } else {
+            // Fallback to localStorage if no Supabase data
+            const storedPosts = localStorage.getItem('calendarPosts');
+            if (storedPosts) {
+              const allPosts = JSON.parse(storedPosts);
+              const filteredPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+              setClientPosts(filteredPosts);
+            } else {
+              setClientPosts([]);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching posts:', error);
+          
+          // Fallback to localStorage
+          const storedPosts = localStorage.getItem('calendarPosts');
+          if (storedPosts) {
+            const allPosts = JSON.parse(storedPosts);
+            const filteredPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+            setClientPosts(filteredPosts);
+          }
+        }
+      };
+      
+      fetchPostsFromSupabase();
     }
   }, [clientId, open]);
   

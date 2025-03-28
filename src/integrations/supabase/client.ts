@@ -32,3 +32,36 @@ export const checkSupabaseTables = async () => {
     return false;
   }
 };
+
+// Helper to create a storage bucket if it doesn't exist
+export const ensureStorageBucketExists = async () => {
+  try {
+    // Check if bucket exists first
+    const { data: buckets, error: listError } = await supabase
+      .storage
+      .listBuckets();
+      
+    const bucketExists = buckets?.some(bucket => bucket.name === 'post_images');
+    
+    if (!bucketExists) {
+      console.log('Creating post_images bucket...');
+      const { error } = await supabase
+        .storage
+        .createBucket('post_images', {
+          public: true,
+          fileSizeLimit: 10485760, // 10MB
+          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+        });
+        
+      if (error) {
+        console.error('Error creating storage bucket:', error);
+        return false;
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error ensuring storage bucket exists:', error);
+    return false;
+  }
+};
