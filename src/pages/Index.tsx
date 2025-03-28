@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
@@ -892,4 +893,137 @@ const Index = () => {
                         >
                           <Save className="w-4 h-4" />
                           Salvar
-                        </
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {isEditing ? (
+                  <Textarea 
+                    value={editedPost?.text || ''}
+                    onChange={(e) => setEditedPost(prev => prev ? {...prev, text: e.target.value} : null)}
+                    className="mt-6 text-gray-700 border-gray-200 focus-visible:ring-gray-400 min-h-[200px]"
+                  />
+                ) : (
+                  <div className="mt-6 text-gray-700 whitespace-pre-line">
+                    {selectedPost.text}
+                    <Button
+                      onClick={() => handleCopyText(selectedPost.text)}
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 text-xs"
+                    >
+                      Copiar texto
+                    </Button>
+                  </div>
+                )}
+                
+                <div className="mt-10 pt-10 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      Status da postagem
+                    </h3>
+                    <div className="flex items-center">
+                      <span className="mr-3 text-sm text-gray-600">
+                        {selectedPost.completed ? 'Concluído' : 'Pendente'}
+                      </span>
+                      <Checkbox 
+                        checked={selectedPost.completed}
+                        onCheckedChange={(checked) => handleCompleteTask(selectedPost.id, !!checked)}
+                        style={{ 
+                          borderColor: selectedPost.completed ? undefined : themeColor,
+                          backgroundColor: selectedPost.completed ? themeColor : undefined 
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                      Anotações
+                    </h3>
+                    <Textarea 
+                      value={selectedPost.notes}
+                      onChange={(e) => handleUpdateNotes(selectedPost.id, e.target.value)}
+                      placeholder="Adicionar notas sobre esta postagem..."
+                      className="min-h-[100px]"
+                    />
+                  </div>
+                  
+                  <div className="mt-8">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                      <Image className="w-5 h-5 mr-2" />
+                      Imagens 
+                      <span className="ml-2 text-sm font-normal text-gray-500">
+                        {selectedPost?.images?.length || 0} {(selectedPost?.images?.length || 0) === 1 ? 'imagem' : 'imagens'}
+                      </span>
+                    </h3>
+                    
+                    <div className="flex flex-wrap gap-4 mt-4">
+                      {selectedPost?.images?.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <img 
+                            src={image} 
+                            alt={`Imagem ${index + 1}`} 
+                            className="w-32 h-32 object-cover rounded-lg border border-gray-200"
+                          />
+                          <button
+                            onClick={() => handleRemoveImage(selectedPost.id, index)}
+                            className="absolute top-2 right-2 bg-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-4 h-4 text-red-500" />
+                          </button>
+                        </div>
+                      ))}
+                      
+                      <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
+                        <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                        <span className="text-xs text-gray-500">Adicionar imagem</span>
+                        <input 
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => handleImageUpload(selectedPost.id, e)}
+                          disabled={isUploading}
+                        />
+                        {isUploading && (
+                          <span className="text-xs text-gray-500 mt-1">Enviando...</span>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </TransitionLayout>
+      </div>
+      
+      <AddPostModal 
+        open={addPostOpen}
+        onOpenChange={setAddPostOpen}
+        onSave={handleAddPost}
+        initialDate={calendarSelectedDate}
+      />
+      
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={handleDeletePost}
+        title="Confirmar exclusão"
+        description="Tem certeza que deseja excluir esta postagem? Esta ação não pode ser desfeita."
+      />
+      
+      {settingsOpen && (
+        <SettingsModal
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+        />
+      )}
+    </div>
+  );
+};
+
+export default Index;
