@@ -3,7 +3,7 @@ import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
 import CalendarEntry from '@/components/CalendarEntry';
 import { toast } from 'sonner';
-import { Check, X, Upload, Image, Calendar, Edit, Save, ArrowLeft } from 'lucide-react';
+import { Check, X, Upload, Image, Calendar, Edit, Save, ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSettings } from '@/contexts/SettingsContext';
 import SettingsModal from '@/components/SettingsModal';
+import AddPostModal from '@/components/AddPostModal';
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -165,6 +167,12 @@ const Index = () => {
   const [page, setPage] = useState(1);
   const postsPerPage = 10;
   
+  // Add state for new modals
+  const [addPostOpen, setAddPostOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<number | null>(null);
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
+  
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
@@ -237,6 +245,54 @@ const Index = () => {
   const [filteredPosts, setFilteredPosts] = useState<CalendarPost[]>([]);
   const paginatedPosts = filteredPosts.slice((page - 1) * postsPerPage, page * postsPerPage);
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+
+  // New functions for adding and deleting posts
+  const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
+    const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
+    const newPost: CalendarPost = {
+      id: newId,
+      ...newPostData,
+      completed: false,
+      notes: '',
+      clientId: selectedClient?.id
+    };
+    
+    setPosts(prev => [...prev, newPost]);
+    
+    toast.success("Postagem adicionada com sucesso!", {
+      description: `${newPost.date} - ${newPost.title}`,
+      duration: 3000,
+    });
+  };
+  
+  const openDeleteConfirmation = (postId: number) => {
+    setPostToDelete(postId);
+    setDeleteDialogOpen(true);
+  };
+  
+  const handleDeletePost = () => {
+    if (postToDelete === null) return;
+    
+    setPosts(prev => prev.filter(post => post.id !== postToDelete));
+    
+    if (selectedPost && selectedPost.id === postToDelete) {
+      handleBackToCalendar();
+    }
+    
+    setDeleteDialogOpen(false);
+    setPostToDelete(null);
+    
+    toast.success("Postagem removida com sucesso!", {
+      duration: 3000,
+    });
+  };
+  
+  const handleCalendarDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setCalendarSelectedDate(date);
+      setAddPostOpen(true);
+    }
+  };
 
   const parsePostDate = (dateStr: string) => {
     const [day, month] = dateStr.split('/');
@@ -502,9 +558,26 @@ const Index = () => {
                   title="Agenda de Postagens" 
                   subtitle={selectedClient ? selectedClient.name : settings.ownerName} 
                   themeColor={themeColor}
-                  showSettings={true}
+                  showSettings={false}
                   onOpenSettings={() => setSettingsOpen(true)}
                 />
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => setAddPostOpen(true)}
+                    className="text-white flex items-center gap-2"
+                    style={{ backgroundColor: themeColor }}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Nova Postagem
+                  </Button>
+                  <Button
+                    onClick={() => setSettingsOpen(true)}
+                    variant="outline"
+                    className="text-gray-700 border-gray-300 flex items-center gap-2"
+                  >
+                    Configurações
+                  </Button>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
@@ -564,7 +637,7 @@ const Index = () => {
                             mode="single"
                             className="p-3 pointer-events-auto"
                             selected={selectedDate}
-                            onSelect={(date) => date && setSelectedDate(date)}
+                            onSelect={handleCalendarDateSelect}
                             modifiers={{
                               booked: (date) => isDateWithPosts(date)
                             }}
@@ -637,17 +710,17 @@ const Index = () => {
                           <TableBody>
                             {paginatedPosts.length > 0 ? (
                               paginatedPosts.map((post) => (
-                                <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleSelectPost(post)}>
-                                  <TableCell className="font-medium">
+                                <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50">
+                                  <TableCell className="font-medium" onClick={() => handleSelectPost(post)}>
                                     <div className="text-white text-xs font-medium py-1 px-2 rounded-full inline-flex"
                                       style={{ backgroundColor: themeColor }}
                                     >
                                       {post.date}
                                     </div>
                                   </TableCell>
-                                  <TableCell>{post.title}</TableCell>
-                                  <TableCell>{post.postType}</TableCell>
-                                  <TableCell>
+                                  <TableCell onClick={() => handleSelectPost(post)}>{post.title}</TableCell>
+                                  <TableCell onClick={() => handleSelectPost(post)}>{post.postType}</TableCell>
+                                  <TableCell onClick={() => handleSelectPost(post)}>
                                     {post.completed ? (
                                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                         Concluído
@@ -659,18 +732,28 @@ const Index = () => {
                                     )}
                                   </TableCell>
                                   <TableCell className="text-right">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      className="hover:bg-gray-100"
-                                      style={{ color: themeColor }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSelectPost(post);
-                                      }}
-                                    >
-                                      Ver detalhes
-                                    </Button>
+                                    <div className="flex justify-end items-center space-x-2">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        className="hover:bg-gray-100"
+                                        style={{ color: themeColor }}
+                                        onClick={() => handleSelectPost(post)}
+                                      >
+                                        Ver
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="hover:bg-red-100 text-red-600"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openDeleteConfirmation(post.id);
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               ))
@@ -809,159 +892,4 @@ const Index = () => {
                         >
                           <Save className="w-4 h-4" />
                           Salvar
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {!isEditing && (
-                      <div 
-                        className="flex items-center space-x-2"
-                        onClick={() => handleCompleteTask(selectedPost.id, !selectedPost.completed)}
-                      >
-                        <span className="text-sm text-gray-500">Status:</span>
-                        <div className="flex items-center">
-                          <Checkbox 
-                            id={`task-${selectedPost.id}`}
-                            checked={selectedPost.completed}
-                            className="data-[state=checked]:bg-green-600 border-green-400"
-                          />
-                          <label 
-                            htmlFor={`task-${selectedPost.id}`} 
-                            className="ml-2 text-sm font-medium text-gray-700 cursor-pointer"
-                          >
-                            {selectedPost.completed ? "Concluído" : "Pendente"}
-                          </label>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">
-                    Texto para Publicação
-                  </h3>
-                  {isEditing ? (
-                    <Textarea 
-                      value={editedPost?.text || ''}
-                      onChange={(e) => setEditedPost(prev => prev ? {...prev, text: e.target.value} : null)}
-                      className="min-h-[150px] border-gray-200 focus-visible:ring-gray-400 whitespace-pre-line text-gray-600 text-md leading-relaxed"
-                    />
-                  ) : (
-                    <div className="whitespace-pre-line text-gray-600 text-md leading-relaxed">
-                      {selectedPost.text}
-                    </div>
-                  )}
-                  {!isEditing && (
-                    <Button
-                      onClick={() => handleCopyText(selectedPost.text)}
-                      className="mt-4 text-white"
-                      style={{ backgroundColor: themeColor }}
-                    >
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2m0 0h2a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                      </svg>
-                      Copiar Texto
-                    </Button>
-                  )}
-                </div>
-                
-                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3">
-                    Anotações para esta Publicação
-                  </h3>
-                  <Textarea 
-                    placeholder="Adicione informações específicas, links ou outras observações..."
-                    className="min-h-[100px] border-gray-200 focus-visible:ring-gray-400"
-                    value={isEditing ? (editedPost?.notes || '') : (selectedPost.notes || '')}
-                    onChange={(e) => isEditing 
-                      ? setEditedPost(prev => prev ? {...prev, notes: e.target.value} : null)
-                      : handleUpdateNotes(selectedPost.id, e.target.value)
-                    }
-                  />
-                </div>
-                
-                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
-                    <Image className="w-5 h-5 mr-2" style={{ color: themeColor }} />
-                    Imagens da Publicação
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                    {selectedPost.images && selectedPost.images.length > 0 ? (
-                      selectedPost.images.map((img, index) => (
-                        <div key={index} className="relative group">
-                          <img 
-                            src={img} 
-                            alt={`Imagem ${index + 1}`} 
-                            className="w-full h-40 object-cover rounded-lg border border-gray-200" 
-                          />
-                          <button
-                            onClick={() => handleRemoveImage(selectedPost.id, index)}
-                            className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            aria-label="Remover imagem"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 italic col-span-full">Nenhuma imagem adicionada</p>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-                    <Upload className="w-8 h-8 mb-2" style={{ color: themeColor }} />
-                    <p className="text-sm text-gray-600 mb-2">Clique para adicionar imagens ou arraste e solte aqui</p>
-                    
-                    <Input
-                      type="file"
-                      id={`file-upload-${selectedPost.id}`}
-                      className="hidden"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => handleImageUpload(selectedPost.id, e)}
-                      disabled={isUploading}
-                    />
-                    <label
-                      htmlFor={`file-upload-${selectedPost.id}`}
-                      className={`inline-flex items-center justify-center text-sm font-medium gap-2 text-white py-2 px-4 rounded-lg cursor-pointer transition-colors ${isUploading ? 'bg-gray-400' : ''}`}
-                      style={{ backgroundColor: isUploading ? '#9CA3AF' : themeColor }}
-                    >
-                      {isUploading ? (
-                        <>Carregando...</>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4" />
-                          Selecionar Imagens
-                        </>
-                      )}
-                    </label>
-                  </div>
-                </div>
-                
-                <div className="flex justify-center">
-                  <Button
-                    onClick={handleBackToCalendar}
-                    className="flex items-center justify-center gap-2 text-white font-medium py-3 px-6 rounded-xl transition-colors shadow-md"
-                    style={{ backgroundColor: themeColor }}
-                  >
-                    Salvar e Voltar
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </TransitionLayout>
-        
-        <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
-        
-        <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p>Agenda de Postagens • {settings.ownerName}</p>
-        </footer>
-      </div>
-    </div>
-  );
-};
-
-export default Index;
+                        </
