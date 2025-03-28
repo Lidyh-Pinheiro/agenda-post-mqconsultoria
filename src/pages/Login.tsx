@@ -30,7 +30,7 @@ const Login = () => {
           title: "Login realizado com sucesso!",
           description: "Bem-vindo ao sistema de gestão de agenda.",
         });
-        navigate('/agenda');
+        navigate('/');  // Changed from '/agenda' to '/'
         setIsLoading(false);
       }, 1000);
     } else {

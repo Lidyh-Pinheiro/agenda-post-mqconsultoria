@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Settings, Calendar, ChevronLeft, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -76,7 +75,6 @@ const Home = () => {
 
   const handleEditClient = (client: any) => {
     setSelectedClient(client.id);
-    // Open settings modal with client tab
     setOpenSettingsModal(true);
   };
 
@@ -105,17 +103,22 @@ const Home = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold">Gerenciamento de Clientes</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center space-x-3">
           <Button
-            variant="outline"
+            variant="neutral"
             size="sm"
             onClick={handleLogout}
-            className="flex items-center gap-1"
+            className="rounded-[10px]"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4 w-4 mr-1" />
             Sair
           </Button>
-          <Button onClick={() => setOpenSettingsModal(true)}>
+          <Button 
+            variant="neutral" 
+            onClick={() => setOpenSettingsModal(true)}
+            className="rounded-[10px]"
+          >
+            <Settings className="h-4 w-4 mr-1" />
             Configurações
           </Button>
         </div>
@@ -123,12 +126,21 @@ const Home = () => {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Clientes</h2>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setIsTableView(!isTableView)}>
+        <div className="flex items-center space-x-3">
+          <Button 
+            variant="neutral" 
+            size="sm" 
+            onClick={() => setIsTableView(!isTableView)}
+            className="rounded-[10px]"
+          >
             {isTableView ? "Visualização em Card" : "Visualização em Tabela"}
           </Button>
-          <Button onClick={() => setOpenAddClientModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button 
+            variant="primary"
+            onClick={() => setOpenAddClientModal(true)}
+            className="rounded-[10px]"
+          >
+            <Plus className="w-4 h-4 mr-1" />
             Adicionar Cliente
           </Button>
         </div>
@@ -167,7 +179,7 @@ const Home = () => {
 
       {/* Add Client Modal */}
       <Dialog open={openAddClientModal} onOpenChange={setOpenAddClientModal}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] rounded-[10px]">
           <DialogHeader>
             <DialogTitle>Adicionar Cliente</DialogTitle>
             <DialogDescription>
@@ -264,9 +276,9 @@ const Home = () => {
                   </FormItem>
                 )}
               />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleCloseAddClientModal}>Cancelar</Button>
-                <Button type="submit">Salvar</Button>
+              <DialogFooter className="flex flex-row gap-3 justify-end">
+                <Button type="button" variant="neutral" onClick={handleCloseAddClientModal} className="rounded-[10px]">Cancelar</Button>
+                <Button type="submit" className="rounded-[10px]">Salvar</Button>
               </DialogFooter>
             </form>
           </Form>
