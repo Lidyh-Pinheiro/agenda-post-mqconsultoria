@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Lock, MessageCircle } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
+import { toast } from "sonner";
 
 interface CalendarPost {
   id: number;
@@ -82,8 +83,10 @@ const SharedClientAgenda = () => {
       localStorage.setItem(`client_auth_${clientId}`, 'true');
       loadClientPosts(clientId as string);
       setError('');
+      toast.success("Acesso autorizado!");
     } else {
       setError('Senha incorreta. Por favor, tente novamente.');
+      toast.error("Senha incorreta");
     }
   };
   
