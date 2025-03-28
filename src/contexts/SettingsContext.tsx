@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -5,9 +6,11 @@ export interface Client {
   id: string;
   name: string;
   themeColor: string;
-  createdAt: Date;
+  createdAt: string;
   postsCount?: number;
   password?: string;
+  active?: boolean;
+  description?: string;
 }
 
 export interface Settings {
@@ -19,15 +22,20 @@ export interface Settings {
 
 interface SettingsContextType {
   settings: Settings;
+  clients: Client[];
   updateCompanyName: (name: string) => void;
   updateOwnerName: (name: string) => void;
   addClient: (name: string, themeColor: string, password: string) => string;
+  createClient: (client: Partial<Client>) => void;
   updateClient: (id: string, name: string, themeColor: string, password?: string) => void;
-  deleteClient: (id: string, password: string) => boolean;
+  deleteClient: (id: string, password?: string) => boolean;
   selectClient: (id: string | null) => void;
+  setSelectedClient: (id: string | null) => void;
   getSelectedClient: () => Client | null;
+  selectedClient: string | null;
   generateClientShareLink: (clientId: string) => string;
   updateClientPostsCount: (clientId: string, count: number) => void;
+  shareClient: (clientId: string) => void;
 }
 
 const defaultSettings: Settings = {
@@ -38,7 +46,7 @@ const defaultSettings: Settings = {
       id: uuidv4(),
       name: 'Vereadora Neia Marques',
       themeColor: '#dc2626',
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
       postsCount: 12,
       password: '123456',
     }
@@ -75,7 +83,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       id: uuidv4(),
       name,
       themeColor,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
       postsCount: 0,
       password,
     };
@@ -87,6 +95,25 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
 
     return newClient.id;
+  };
+
+  const createClient = (client: Partial<Client>) => {
+    const newClient: Client = {
+      id: uuidv4(),
+      name: client.name || 'New Client',
+      themeColor: client.themeColor || '#dc2626',
+      createdAt: client.createdAt || new Date().toISOString(),
+      postsCount: client.postsCount || 0,
+      password: client.password || '123456',
+      active: client.active !== undefined ? client.active : true,
+      description: client.description || '',
+    };
+
+    setSettings(prev => ({
+      ...prev,
+      clients: [...prev.clients, newClient],
+      selectedClientId: newClient.id,
+    }));
   };
 
   const updateClient = (id: string, name: string, themeColor: string, password?: string) => {
@@ -106,10 +133,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
   };
 
-  const deleteClient = (id: string, password: string) => {
+  const deleteClient = (id: string, password?: string) => {
     const client = settings.clients.find(client => client.id === id);
     
-    if (!client || client.password !== password) {
+    if (!client || (password && client.password !== password)) {
       return false;
     }
     
@@ -133,6 +160,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setSettings(prev => ({ ...prev, selectedClientId: id }));
   };
 
+  const setSelectedClient = (id: string | null) => {
+    setSettings(prev => ({ ...prev, selectedClientId: id }));
+  };
+
   const getSelectedClient = () => {
     if (!settings.selectedClientId) return null;
     return settings.clients.find(client => client.id === settings.selectedClientId) || null;
@@ -152,19 +183,30 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
   };
 
+  const shareClient = (clientId: string) => {
+    // Implementation for sharing client
+    console.log(`Sharing client with ID: ${clientId}`);
+    // This would be implemented with actual sharing logic
+  };
+
   return (
     <SettingsContext.Provider 
       value={{ 
-        settings, 
+        settings,
+        clients: settings.clients, 
         updateCompanyName,
         updateOwnerName, 
-        addClient, 
+        addClient,
+        createClient,
         updateClient, 
         deleteClient, 
         selectClient,
+        setSelectedClient,
+        selectedClient: settings.selectedClientId,
         getSelectedClient,
         generateClientShareLink,
-        updateClientPostsCount
+        updateClientPostsCount,
+        shareClient
       }}
     >
       {children}

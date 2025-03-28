@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Settings, Calendar, ChevronLeft, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -21,7 +22,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Checkbox } from '@/components/ui/checkbox';
-import { SettingsContext, useSettings } from '@/contexts/SettingsContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import ClientCard from '@/components/ClientCard';
 import ClientTable from '@/components/ClientTable';
 
@@ -40,15 +41,17 @@ const Home = () => {
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [isTableView, setIsTableView] = useState(false);
   const { toast } = useToast();
-  const {
-    clients,
-    createClient,
-    updateClient,
-    deleteClient,
-    shareClient,
-    selectedClient,
-    setSelectedClient
-  } = useSettings();
+  const settings = useSettings();
+  
+  // Initialize with a default empty array to prevent undefined.length error
+  const clients = settings?.clients || [];
+  const createClient = settings?.createClient || (() => {});
+  const updateClient = settings?.updateClient || (() => {});
+  const deleteClient = settings?.deleteClient || (() => {});
+  const shareClient = settings?.shareClient || (() => {});
+  const selectedClient = settings?.selectedClient || null;
+  const setSelectedClient = settings?.setSelectedClient || (() => {});
+  
   const navigate = useNavigate();
 
   const form = useForm<z.infer<typeof formSchema>>({
