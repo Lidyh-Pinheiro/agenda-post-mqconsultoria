@@ -10,11 +10,13 @@ import SettingsModal from '@/components/SettingsModal';
 import ClientCard from '@/components/ClientCard';
 import ClientTable from '@/components/ClientTable';
 import ShareModal from '@/components/ShareModal';
+import PasswordConfirmDialog from '@/components/PasswordConfirmDialog'; // Import the new component
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner'; // Import toast for notification
 
 const Home = () => {
-  const { settings, selectClient, addClient } = useSettings();
+  const { settings, selectClient, addClient, deleteClient } = useSettings();
   const navigate = useNavigate();
   
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -22,6 +24,10 @@ const Home = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareClientId, setShareClientId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  
+  // Add state for password confirmation dialog
+  const [deletePasswordDialogOpen, setDeletePasswordDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
   
   const handleSelectClient = (clientId: string) => {
     selectClient(clientId);
@@ -45,6 +51,26 @@ const Home = () => {
   const handleShareClient = (clientId: string) => {
     setShareClientId(clientId);
     setShareModalOpen(true);
+  };
+  
+  // New handlers for client deletion with password confirmation
+  const handleOpenDeleteDialog = (clientId: string) => {
+    setClientToDelete(clientId);
+    setDeletePasswordDialogOpen(true);
+  };
+
+  const handleDeleteClient = (password: string) => {
+    if (!clientToDelete) return;
+    
+    const success = deleteClient(clientToDelete, password);
+    
+    if (success) {
+      setDeletePasswordDialogOpen(false);
+      setClientToDelete(null);
+      toast.success('Cliente excluído com sucesso!');
+    } else {
+      toast.error('Senha incorreta. Exclusão cancelada.');
+    }
   };
   
   return (
@@ -149,6 +175,7 @@ const Home = () => {
                     onSelect={() => handleSelectClient(client.id)}
                     onEdit={() => handleEditClient(client.id)}
                     onShare={() => handleShareClient(client.id)}
+                    onDelete={() => handleOpenDeleteDialog(client.id)} // Update to use password confirmation
                   />
                 ))}
                 
@@ -170,6 +197,7 @@ const Home = () => {
                 onSelect={handleSelectClient}
                 onEdit={(client) => handleEditClient(client.id)}
                 onShare={(clientId) => handleShareClient(clientId)}
+                onDelete={(clientId) => handleOpenDeleteDialog(clientId)} // Update to use password confirmation
               />
               
               {settings.clients.length === 0 && (
@@ -212,6 +240,15 @@ const Home = () => {
           open={shareModalOpen}
           onOpenChange={setShareModalOpen}
           clientId={shareClientId}
+        />
+        
+        {/* Add Password Confirmation Dialog */}
+        <PasswordConfirmDialog
+          open={deletePasswordDialogOpen}
+          onOpenChange={setDeletePasswordDialogOpen}
+          onConfirm={handleDeleteClient}
+          title="Confirmar exclusão do cliente"
+          description="Para excluir este cliente, por favor insira a senha cadastrada."
         />
         
         <footer className="mt-16 text-center text-gray-500 text-sm">

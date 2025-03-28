@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Save, Edit, Copy, Palette, Calendar } from 'lucide-react';
+import { X, Plus, Trash2, Save, Edit, Copy, Palette, Calendar, Lock } from 'lucide-react';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import PasswordConfirmDialog from '@/components/PasswordConfirmDialog'; // Import the new component
 
 interface SettingsModalProps {
   open: boolean;
@@ -60,11 +61,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   // New client form
   const [newClientName, setNewClientName] = useState('');
   const [newClientColor, setNewClientColor] = useState('#dc2626');
+  const [newClientPassword, setNewClientPassword] = useState('');
+  const [newPasswordError, setNewPasswordError] = useState(false);
   
   // Edit client
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [editClientName, setEditClientName] = useState('');
   const [editClientColor, setEditClientColor] = useState('');
+  const [editClientPassword, setEditClientPassword] = useState('');
+  const [editPasswordError, setEditPasswordError] = useState(false);
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  
+  // Password confirmation for deletion
+  const [deletePasswordDialogOpen, setDeletePasswordDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
 
   // Set initial edit client if provided
   useEffect(() => {
@@ -91,8 +101,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       return;
     }
     
-    addClient(newClientName, newClientColor);
+    if (newClientPassword.trim() === '') {
+      setNewPasswordError(true);
+      toast.error('A senha não pode estar vazia');
+      return;
+    }
+    
+    addClient(newClientName, newClientColor, newClientPassword);
     setNewClientName('');
+    setNewClientPassword('');
+    setNewPasswordError(false);
     toast.success('Cliente adicionado com sucesso!');
   };
 
@@ -100,6 +118,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setEditingClientId(client.id);
     setEditClientName(client.name);
     setEditClientColor(client.themeColor);
+    setEditClientPassword('');
+    setShowEditPassword(false);
   };
 
   const handleSaveEditClient = () => {
@@ -110,19 +130,47 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       return;
     }
     
-    updateClient(editingClientId, editClientName, editClientColor);
+    // If password field is shown but empty, show error
+    if (showEditPassword && editClientPassword.trim() === '') {
+      setEditPasswordError(true);
+      toast.error('A senha não pode estar vazia');
+      return;
+    }
+    
+    // Only update password if it was changed
+    if (showEditPassword) {
+      updateClient(editingClientId, editClientName, editClientColor, editClientPassword);
+    } else {
+      updateClient(editingClientId, editClientName, editClientColor);
+    }
+    
     setEditingClientId(null);
+    setShowEditPassword(false);
     toast.success('Cliente atualizado com sucesso!');
   };
 
   const handleCancelEditClient = () => {
     setEditingClientId(null);
+    setShowEditPassword(false);
+    setEditPasswordError(false);
   };
 
-  const handleDeleteClient = (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este cliente?')) {
-      deleteClient(id);
+  const handleOpenDeleteDialog = (id: string) => {
+    setClientToDelete(id);
+    setDeletePasswordDialogOpen(true);
+  };
+
+  const handleDeleteClient = (password: string) => {
+    if (!clientToDelete) return;
+    
+    const success = deleteClient(clientToDelete, password);
+    
+    if (success) {
+      setDeletePasswordDialogOpen(false);
+      setClientToDelete(null);
       toast.success('Cliente excluído com sucesso!');
+    } else {
+      toast.error('Senha incorreta. Exclusão cancelada.');
     }
   };
 
@@ -200,6 +248,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Senha do Cliente
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="password"
+                      value={newClientPassword}
+                      onChange={(e) => {
+                        setNewClientPassword(e.target.value);
+                        setNewPasswordError(false);
+                      }}
+                      placeholder="Senha para exclusão"
+                      className={newPasswordError ? "border-red-500" : ""}
+                    />
+                    <Lock className="w-4 h-4 absolute right-3 top-3 text-gray-400" />
+                  </div>
+                  {newPasswordError && (
+                    <p className="text-sm text-red-500 mt-1">A senha é obrigatória</p>
+                  )}
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Cor do Tema
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -245,6 +315,40 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                             onChange={(e) => setEditClientName(e.target.value)}
                             placeholder="Nome do cliente"
                           />
+                          
+                          {!showEditPassword ? (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setShowEditPassword(true)}
+                              className="flex items-center gap-2"
+                            >
+                              <Lock className="w-4 h-4" />
+                              Alterar Senha
+                            </Button>
+                          ) : (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Nova Senha
+                              </label>
+                              <div className="relative">
+                                <Input
+                                  type="password"
+                                  value={editClientPassword}
+                                  onChange={(e) => {
+                                    setEditClientPassword(e.target.value);
+                                    setEditPasswordError(false);
+                                  }}
+                                  placeholder="Nova senha"
+                                  className={editPasswordError ? "border-red-500" : ""}
+                                />
+                                <Lock className="w-4 h-4 absolute right-3 top-3 text-gray-400" />
+                              </div>
+                              {editPasswordError && (
+                                <p className="text-sm text-red-500 mt-1">A senha é obrigatória</p>
+                              )}
+                            </div>
+                          )}
                           
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -304,7 +408,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 <Edit className="w-4 h-4" />
                               </Button>
                               <Button 
-                                onClick={() => handleDeleteClient(client.id)} 
+                                onClick={() => handleOpenDeleteDialog(client.id)} 
                                 variant="ghost" 
                                 size="sm"
                               >
@@ -346,6 +450,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Password confirmation dialog */}
+      <PasswordConfirmDialog
+        open={deletePasswordDialogOpen}
+        onOpenChange={setDeletePasswordDialogOpen}
+        onConfirm={handleDeleteClient}
+        title="Confirmar exclusão do cliente"
+        description="Para excluir este cliente, por favor insira a senha cadastrada."
+      />
     </Dialog>
   );
 };
