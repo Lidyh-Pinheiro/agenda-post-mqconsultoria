@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, Users, Palette, Share2 } from 'lucide-react';
+import { Calendar, Users, Palette, Share2, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Client } from '@/contexts/SettingsContext';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,10 @@ interface ClientCardProps {
   onSelect: () => void;
   onEdit: () => void;
   onShare: () => void;
+  onDelete: () => void;
 }
 
-const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onShare }) => {
+const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onShare, onDelete }) => {
   return (
     <Card 
       className="hover:shadow-md transition-all"
@@ -85,6 +86,15 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onSha
             className="w-9 p-0 flex justify-center"
           >
             <Share2 className="w-4 h-4" />
+          </Button>
+          
+          <Button
+            onClick={onDelete}
+            variant="outline"
+            size="sm"
+            className="w-9 p-0 flex justify-center"
+          >
+            <Trash2 className="w-4 h-4 text-red-500" />
           </Button>
         </div>
       </CardContent>

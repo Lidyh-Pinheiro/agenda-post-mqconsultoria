@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Calendar, Users, Edit, Share2, Palette } from 'lucide-react';
+import { Calendar, Users, Edit, Share2, Palette, Trash2 } from 'lucide-react';
 import { Client } from '@/contexts/SettingsContext';
 import {
   Table,
@@ -17,13 +17,15 @@ interface ClientTableProps {
   onSelect: (clientId: string) => void;
   onEdit: (client: Client) => void;
   onShare: (clientId: string) => void;
+  onDelete: (clientId: string) => void;
 }
 
 const ClientTable: React.FC<ClientTableProps> = ({ 
   clients, 
   onSelect, 
   onEdit, 
-  onShare 
+  onShare,
+  onDelete
 }) => {
   return (
     <div className="rounded-lg border bg-card">
@@ -100,6 +102,14 @@ const ClientTable: React.FC<ClientTableProps> = ({
                       className="text-gray-500"
                     >
                       <Share2 className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      onClick={() => onDelete(client.id)} 
+                      variant="ghost" 
+                      size="sm"
+                      className="text-gray-500"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
                     </Button>
                   </div>
                 </TableCell>
