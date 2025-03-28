@@ -141,8 +141,7 @@ const ClientAgenda = () => {
       setEditingPost(null);
       
       toast.success("Postagem atualizada com sucesso!", {
-        description: `${newPostData.date} - ${newPostData.title}`,
-        duration: 3000,
+        description: `${newPostData.date} - ${newPostData.title}`
       });
     } else {
       const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
@@ -157,8 +156,7 @@ const ClientAgenda = () => {
       setPosts(sortPostsByDate([...posts, newPost]));
       
       toast.success("Postagem adicionada com sucesso!", {
-        description: `${newPost.date} - ${newPost.title}`,
-        duration: 3000,
+        description: `${newPost.date} - ${newPost.title}`
       });
     }
   };
@@ -183,9 +181,7 @@ const ClientAgenda = () => {
     setDeleteDialogOpen(false);
     setPostToDelete(null);
     
-    toast.success("Postagem removida com sucesso!", {
-      duration: 3000,
-    });
+    toast.success("Postagem removida com sucesso!");
   };
   
   const handleCalendarDateSelect = (date: Date | undefined) => {
@@ -232,23 +228,14 @@ const ClientAgenda = () => {
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${postId}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const reader = new FileReader();
         
-        const { data, error } = await supabase.storage
-          .from('post_images')
-          .upload(filePath, file);
-          
-        if (error) {
-          throw error;
-        }
+        const fileUrl = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
         
-        const { data: urlData } = supabase.storage
-          .from('post_images')
-          .getPublicUrl(filePath);
-          
-        uploadedImageUrls.push(urlData.publicUrl);
+        uploadedImageUrls.push(fileUrl);
       }
       
       setPosts(prev => prev.map(post => {
@@ -259,14 +246,11 @@ const ClientAgenda = () => {
         return post;
       }));
       
-      toast.success("Arquivo(s) adicionado(s) com sucesso!", {
-        duration: 2000,
-      });
+      toast.success("Arquivo(s) adicionado(s) com sucesso!");
     } catch (error) {
       console.error('Error uploading image:', error);
       toast.error("Erro ao fazer upload do arquivo.", {
-        description: "Tente novamente mais tarde.",
-        duration: 3000,
+        description: "Tente novamente mais tarde."
       });
     } finally {
       setIsUploading(null);
