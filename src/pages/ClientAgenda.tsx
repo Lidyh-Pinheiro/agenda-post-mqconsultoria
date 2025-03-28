@@ -178,7 +178,6 @@ const ClientAgenda = () => {
       
       toast.success("Postagem atualizada com sucesso!", {
         description: `${newPostData.date} - ${newPostData.title}`,
-        duration: 3000,
       });
     } else {
       const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
@@ -194,7 +193,6 @@ const ClientAgenda = () => {
       
       toast.success("Postagem adicionada com sucesso!", {
         description: `${newPost.date} - ${newPost.title}`,
-        duration: 3000,
       });
     }
   };
@@ -222,9 +220,7 @@ const ClientAgenda = () => {
     setDeleteDialogOpen(false);
     setPostToDelete(null);
     
-    toast.success("Postagem removida com sucesso!", {
-      duration: 3000,
-    });
+    toast.success("Postagem removida com sucesso!");
   };
   
   const handleCalendarDateSelect = (date: Date | undefined) => {

@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Plus, Settings, Calendar, ChevronLeft, LogOut, Users, BarChart, PieChart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from "@/hooks/use-toast";
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +44,6 @@ const Home = () => {
   const [openAddClientModal, setOpenAddClientModal] = useState(false);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [isTableView, setIsTableView] = useState(false);
-  const { toast } = useToast();
   const { clients, createClient, updateClient, deleteClient, shareClient, selectedClient, setSelectedClient } = useSettings();
   const navigate = useNavigate();
 
@@ -74,7 +72,7 @@ const Home = () => {
     toast({
       title: "Cliente criado com sucesso!",
       description: "O cliente foi adicionado à sua lista.",
-    })
+    });
     handleCloseAddClientModal();
   }
 
@@ -93,7 +91,7 @@ const Home = () => {
     toast({
       title: "Cliente compartilhado com sucesso!",
       description: "O cliente foi compartilhado com sua equipe.",
-    })
+    });
   };
 
   const handleDeleteClient = (clientId: string) => {
@@ -101,7 +99,7 @@ const Home = () => {
     toast({
       title: "Cliente removido com sucesso!",
       description: "O cliente foi removido da sua lista.",
-    })
+    });
   };
 
   const handleLogout = () => {

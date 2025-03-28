@@ -40,7 +40,6 @@ const ClientPostDetail = () => {
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Find the client by ID
   useEffect(() => {
     if (!clientId) return;
     
@@ -48,12 +47,10 @@ const ClientPostDetail = () => {
     if (foundClient) {
       setClient(foundClient);
     } else {
-      // Client not found, redirect to home
       navigate('/');
     }
   }, [clientId, settings.clients, navigate]);
   
-  // Load post from Firebase
   useEffect(() => {
     if (!postId || !clientId) return;
     
@@ -68,11 +65,9 @@ const ClientPostDetail = () => {
             setPost(foundPost);
             setEditedPost({...foundPost});
           } else {
-            // Post not found, redirect back
             navigate(`/client/${clientId}`);
           }
         } else {
-          // No posts found, try localStorage
           const storedPosts = localStorage.getItem('calendarPosts');
           if (storedPosts) {
             const allPosts = JSON.parse(storedPosts);
@@ -98,7 +93,6 @@ const ClientPostDetail = () => {
     
     loadPost();
     
-    // Subscribe to updates
     const unsubscribe = firebaseDB.subscribeToPosts((allPosts) => {
       if (allPosts) {
         const foundPost = allPosts.find((p: CalendarPost) => p.id === parseInt(postId));
@@ -125,19 +119,15 @@ const ClientPostDetail = () => {
     setPost(updatedPost);
     
     try {
-      // Update in Firebase
       const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.map((p: CalendarPost) => 
         p.id === post.id ? updatedPost : p
       );
       await firebaseDB.setPosts(updatedPosts);
       
-      // Also update localStorage
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
       
-      toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
-        duration: 2000,
-      });
+      toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada");
     } catch (error) {
       console.error("Error updating post status:", error);
       toast.error("Erro ao atualizar status da postagem");
@@ -151,14 +141,12 @@ const ClientPostDetail = () => {
     setPost(updatedPost);
     
     try {
-      // Update in Firebase
       const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.map((p: CalendarPost) => 
         p.id === post.id ? updatedPost : p
       );
       await firebaseDB.setPosts(updatedPosts);
       
-      // Also update localStorage
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
     } catch (error) {
       console.error("Error updating post notes:", error);
@@ -202,24 +190,19 @@ const ClientPostDetail = () => {
       setPost(updatedPost);
       setEditedPost(updatedPost);
       
-      // Update in Firebase
       const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.map((p: CalendarPost) => 
         p.id === post.id ? updatedPost : p
       );
       await firebaseDB.setPosts(updatedPosts);
       
-      // Also update localStorage
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
       
-      toast("Arquivo(s) adicionado(s) com sucesso!", {
-        duration: 2000,
-      });
+      toast("Arquivo(s) adicionado(s) com sucesso!");
     } catch (error) {
       console.error('Error uploading image:', error);
       toast("Erro ao fazer upload do arquivo.", {
         description: "Tente novamente mais tarde.",
-        duration: 3000,
       });
     } finally {
       setIsUploading(false);
@@ -252,24 +235,19 @@ const ClientPostDetail = () => {
       setPost(updatedPost);
       setEditedPost({...updatedPost});
       
-      // Update in Firebase
       const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.map((p: CalendarPost) => 
         p.id === post.id ? updatedPost : p
       );
       await firebaseDB.setPosts(updatedPosts);
       
-      // Also update localStorage
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
 
-      toast("Imagem removida!", {
-        duration: 2000,
-      });
+      toast("Imagem removida!");
     } catch (error) {
       console.error('Error removing image:', error);
       toast("Erro ao remover imagem.", {
         description: "Tente novamente mais tarde.",
-        duration: 3000,
       });
     }
   };
@@ -300,14 +278,12 @@ const ClientPostDetail = () => {
     setIsEditing(false);
     
     try {
-      // Update in Firebase
       const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.map((p: CalendarPost) => 
         p.id === updatedPost.id ? updatedPost : p
       );
       await firebaseDB.setPosts(updatedPosts);
       
-      // Also update localStorage
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
       
       toast("Alterações salvas com sucesso!", {
