@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -339,7 +340,7 @@ const ClientAgenda = () => {
                 variant="outline"
                 className="text-gray-700 border-gray-300 flex items-center gap-2"
               >
-                <Share className="w-4 h-4" />
+                <Share className="w-4 w-4" />
                 Imprimir Agenda
               </Button>
             </div>
