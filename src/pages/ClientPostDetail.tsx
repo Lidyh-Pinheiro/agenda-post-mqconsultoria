@@ -1,330 +1,500 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Trash2, Save } from 'lucide-react';
+import { TransitionLayout } from '@/components/TransitionLayout';
+import { useSettings, Client } from '@/contexts/SettingsContext';
+import { ArrowLeft, Calendar, Image, Upload, Check, X, Save, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarPost } from '@/types/calendar';
-import CalendarEntry from '@/components/CalendarEntry';
-import Header from '@/components/Header';
-import { Checkbox } from '@/components/ui/checkbox';
-import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import { toast } from 'sonner';
-import { useSettings } from '@/contexts/SettingsContext';
-import { savePosts, deletePost } from '@/services/postService';
+import { supabase } from '@/integrations/supabase/client';
+
+interface CalendarPost {
+  id: number;
+  date: string;
+  day: string;
+  dayOfWeek: string;
+  title: string;
+  type: string;
+  postType: string;
+  text: string;
+  completed?: boolean;
+  notes?: string;
+  images?: string[];
+  clientId?: string;
+}
 
 const ClientPostDetail = () => {
-  const { clientId, postId } = useParams();
+  const { clientId, postId } = useParams<{ clientId: string; postId: string }>();
   const navigate = useNavigate();
-  const { clients } = useSettings();
-
-  const [client, setClient] = useState<any>(null);
+  const { settings } = useSettings();
+  
+  const [client, setClient] = useState<Client | null>(null);
   const [post, setPost] = useState<CalendarPost | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [clientPosts, setClientPosts] = useState<CalendarPost[]>([]);
-
+  
+  // Find the client by ID
   useEffect(() => {
     if (!clientId) return;
-
-    const foundClient = clients?.find(c => c.id === clientId);
+    
+    const foundClient = settings.clients.find(c => c.id === clientId);
     if (foundClient) {
       setClient(foundClient);
     } else {
+      // Client not found, redirect to home
       navigate('/');
     }
-  }, [clientId, clients, navigate]);
-
+  }, [clientId, settings.clients, navigate]);
+  
+  // Load post from localStorage
   useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        const storedPosts = localStorage.getItem('calendarPosts');
-        if (storedPosts) {
-          const allPosts = JSON.parse(storedPosts);
-          const clientFilteredPosts = allPosts.filter((p: CalendarPost) => p.clientId === clientId);
-          setClientPosts(clientFilteredPosts);
-          
-          if (postId) {
-            const foundPost = clientFilteredPosts.find((p: CalendarPost) => p.id === Number(postId));
-            if (foundPost) {
-              setPost(foundPost);
-              setEditedPost(foundPost);
-            } else {
-              navigate(`/client/${clientId}`);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error loading posts:', error);
+    if (!postId) return;
+    
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts) {
+      const allPosts = JSON.parse(storedPosts);
+      const foundPost = allPosts.find((p: CalendarPost) => p.id === parseInt(postId));
+      
+      if (foundPost) {
+        setPost(foundPost);
+        setEditedPost({...foundPost});
+      } else {
+        // Post not found, redirect back
+        navigate(`/client/${clientId}`);
       }
-    };
-
-    if (clientId) {
-      loadPosts();
     }
-  }, [clientId, postId, navigate]);
-
-  const handleGoBack = () => {
+  }, [postId, clientId, navigate]);
+  
+  const handleBack = () => {
     navigate(`/client/${clientId}`);
   };
-
-  const handleEditToggle = () => {
-    setIsEditing(!isEditing);
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editedPost || !clientId) return;
-
-    try {
-      const updatedPosts = clientPosts.map(p => 
-        p.id === editedPost.id ? editedPost : p
-      );
-      
-      await savePosts(updatedPosts, clientId);
-      
-      setPost(editedPost);
-      setClientPosts(updatedPosts);
-      setIsEditing(false);
-      
-      toast.success("Postagem atualizada com sucesso!");
-    } catch (error) {
-      toast.error("Erro ao atualizar postagem.");
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (!editedPost) return;
+  
+  const handleCompleteTask = (completed: boolean) => {
+    if (!post) return;
     
-    setEditedPost({
-      ...editedPost,
-      [e.target.name]: e.target.value
+    const updatedPost = {...post, completed};
+    setPost(updatedPost);
+    
+    // Update in localStorage
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts) {
+      const allPosts = JSON.parse(storedPosts);
+      const updatedPosts = allPosts.map((p: CalendarPost) => 
+        p.id === post.id ? updatedPost : p
+      );
+      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    }
+    
+    toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
+      duration: 2000,
     });
   };
-
-  const handleStatusChange = async () => {
-    if (!post || !editedPost || !clientId) return;
+  
+  const handleUpdateNotes = (notes: string) => {
+    if (!post) return;
+    
+    const updatedPost = {...post, notes};
+    setPost(updatedPost);
+    
+    // Update in localStorage
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts) {
+      const allPosts = JSON.parse(storedPosts);
+      const updatedPosts = allPosts.map((p: CalendarPost) => 
+        p.id === post.id ? updatedPost : p
+      );
+      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    }
+  };
+  
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!post) return;
+    
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsUploading(true);
+    const uploadedImageUrls: string[] = [];
     
     try {
-      const updatedPost = {
-        ...post,
-        completed: !post.completed
-      };
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${post.id}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${fileName}`;
+        
+        const { data, error } = await supabase.storage
+          .from('post_images')
+          .upload(filePath, file);
+          
+        if (error) {
+          throw error;
+        }
+        
+        const { data: urlData } = supabase.storage
+          .from('post_images')
+          .getPublicUrl(filePath);
+          
+        uploadedImageUrls.push(urlData.publicUrl);
+      }
       
-      const updatedPosts = clientPosts.map(p => 
-        p.id === updatedPost.id ? updatedPost : p
-      );
-      
-      await savePosts(updatedPosts, clientId);
+      const updatedImages = [...(post.images || []), ...uploadedImageUrls];
+      const updatedPost = {...post, images: updatedImages};
       
       setPost(updatedPost);
       setEditedPost(updatedPost);
-      setClientPosts(updatedPosts);
       
-      toast.success(
-        updatedPost.completed 
-          ? "Postagem marcada como concluída!" 
-          : "Postagem marcada como pendente!"
-      );
+      // Update in localStorage
+      const storedPosts = localStorage.getItem('calendarPosts');
+      if (storedPosts) {
+        const allPosts = JSON.parse(storedPosts);
+        const updatedPosts = allPosts.map((p: CalendarPost) => 
+          p.id === post.id ? updatedPost : p
+        );
+        localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+      }
+      
+      toast("Arquivo(s) adicionado(s) com sucesso!", {
+        duration: 2000,
+      });
     } catch (error) {
-      toast.error("Erro ao atualizar status da postagem.");
+      console.error('Error uploading image:', error);
+      toast("Erro ao fazer upload do arquivo.", {
+        description: "Tente novamente mais tarde.",
+        duration: 3000,
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
-
-  const handleDeleteConfirm = async () => {
-    if (!post || !clientId) return;
+  
+  const handleRemoveImage = async (imageIndex: number) => {
+    if (!post || !post.images || !post.images[imageIndex]) return;
     
     try {
-      const success = await deletePost(post.id);
+      const imageUrl = post.images[imageIndex];
       
-      if (success) {
-        navigate(`/client/${clientId}`);
-      } else {
-        throw new Error('Failed to delete post');
+      const urlParts = imageUrl.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      
+      if (imageUrl.includes('supabase')) {
+        const { error } = await supabase.storage
+          .from('post_images')
+          .remove([fileName]);
+          
+        if (error) {
+          console.error('Error removing image from storage:', error);
+        }
       }
+      
+      const updatedImages = [...post.images];
+      updatedImages.splice(imageIndex, 1);
+      
+      const updatedPost = {...post, images: updatedImages};
+      setPost(updatedPost);
+      setEditedPost({...updatedPost});
+      
+      // Update in localStorage
+      const storedPosts = localStorage.getItem('calendarPosts');
+      if (storedPosts) {
+        const allPosts = JSON.parse(storedPosts);
+        const updatedPosts = allPosts.map((p: CalendarPost) => 
+          p.id === post.id ? updatedPost : p
+        );
+        localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+      }
+
+      toast("Imagem removida!", {
+        duration: 2000,
+      });
     } catch (error) {
-      toast.error("Erro ao remover postagem.");
+      console.error('Error removing image:', error);
+      toast("Erro ao remover imagem.", {
+        description: "Tente novamente mais tarde.",
+        duration: 3000,
+      });
     }
   };
+  
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast("Texto copiado para a área de transferência!", {
+      description: "Agora é só colar onde você precisar.",
+      duration: 3000,
+    });
+  };
 
+  const handleEditMode = () => {
+    setIsEditing(true);
+    setEditedPost(post ? {...post} : null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedPost(post);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editedPost) return;
+    
+    const updatedPost = {...editedPost};
+    setPost(updatedPost);
+    setIsEditing(false);
+    
+    // Update in localStorage
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts) {
+      const allPosts = JSON.parse(storedPosts);
+      const updatedPosts = allPosts.map((p: CalendarPost) => 
+        p.id === updatedPost.id ? updatedPost : p
+      );
+      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    }
+    
+    toast("Alterações salvas com sucesso!", {
+      duration: 2000,
+    });
+  };
+  
   if (!client || !post) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <p>Carregando...</p>
       </div>
     );
   }
-
+  
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header clientName={client.name} themeColor={client.themeColor} />
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center mb-8">
-          <Button variant="ghost" onClick={handleGoBack} className="mr-4">
+    <div 
+      className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
+      style={{ backgroundImage: `linear-gradient(to bottom right, ${client.themeColor}10, white)` }}
+    >
+      <div 
+        className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
+        style={{ backgroundColor: `${client.themeColor}20` }}
+      />
+      <div 
+        className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
+        style={{ backgroundColor: `${client.themeColor}20` }}
+      />
+      
+      <div className="max-w-5xl mx-auto px-4 py-16">
+        <TransitionLayout>
+          <Button 
+            onClick={handleBack}
+            variant="ghost"
+            className="mb-6 flex items-center"
+            style={{ color: client.themeColor }}
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
+            Voltar à agenda
           </Button>
-          <h1 className="text-2xl font-bold">Detalhes da Postagem</h1>
           
-          <div className="ml-auto flex gap-2">
-            {isEditing ? (
-              <Button onClick={handleSaveEdit}>
-                <Save className="mr-2 h-4 w-4" />
-                Salvar
-              </Button>
-            ) : (
-              <Button onClick={handleEditToggle}>Editar</Button>
-            )}
-            <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <div className="bg-white p-6 rounded-xl shadow-sm mb-6">
+          <div className="glass-card rounded-2xl p-8 shadow-xl border"
+            style={{ borderColor: `${client.themeColor}40` }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="text-white font-medium py-2 px-4 rounded-full"
+                style={{ backgroundColor: client.themeColor }}
+              >
+                {post.date} • {post.day}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {post.completed ? (
+                  <span className="bg-green-100 text-green-800 px-3 py-2 rounded-full text-sm font-medium flex items-center">
+                    <Check className="w-4 h-4 mr-1" />
+                    Concluído
+                  </span>
+                ) : (
+                  <span className="bg-yellow-100 text-yellow-800 px-3 py-2 rounded-full text-sm font-medium">
+                    Pendente
+                  </span>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                  style={{ 
+                    borderColor: post.completed ? 'rgb(239 68 68)' : 'rgb(22 163 74)',
+                    color: post.completed ? 'rgb(239 68 68)' : 'rgb(22 163 74)'
+                  }}
+                  onClick={() => handleCompleteTask(!post.completed)}
+                >
+                  {post.completed ? (
+                    <>
+                      <X className="w-4 h-4 mr-1" />
+                      Marcar pendente
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-1" />
+                      Marcar concluído
+                    </>
+                  )}
+                </Button>
+                <span className="bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-medium">
+                  {post.type}
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center justify-between mb-4">
               {isEditing ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="date">Data</Label>
-                      <Input 
-                        id="date" 
-                        name="date" 
-                        value={editedPost?.date || ''} 
-                        onChange={handleChange}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="dayOfWeek">Dia da Semana</Label>
-                      <Input 
-                        id="dayOfWeek" 
-                        name="dayOfWeek" 
-                        value={editedPost?.dayOfWeek || ''} 
-                        onChange={handleChange}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="title">Título</Label>
-                    <Input 
-                      id="title" 
-                      name="title" 
-                      value={editedPost?.title || ''} 
-                      onChange={handleChange}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="postType">Tipo de Post</Label>
-                    <Input 
-                      id="postType" 
-                      name="postType" 
-                      value={editedPost?.postType || ''} 
-                      onChange={handleChange}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="text">Conteúdo</Label>
-                    <Textarea 
-                      id="text" 
-                      name="text" 
-                      value={editedPost?.text || ''} 
-                      onChange={handleChange}
-                      rows={6}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="completed" 
-                      checked={editedPost?.completed || false}
-                      onCheckedChange={(checked) => {
-                        if (editedPost) {
-                          setEditedPost({
-                            ...editedPost,
-                            completed: checked as boolean
-                          });
-                        }
-                      }}
-                    />
-                    <Label htmlFor="completed">Concluído</Label>
-                  </div>
-                </div>
+                <Input 
+                  value={editedPost?.title || ''}
+                  onChange={(e) => setEditedPost(prev => prev ? {...prev, title: e.target.value} : null)}
+                  className="text-2xl font-bold border-gray-200 focus-visible:ring-gray-400"
+                />
               ) : (
-                <div className="space-y-4">
-                  <div>
-                    <h2 className="text-lg font-semibold">{post.title}</h2>
-                    <p className="text-sm text-gray-500">
-                      {post.date} • {post.dayOfWeek} • {post.postType}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="font-medium mb-2">Conteúdo do Post</h3>
-                    <p className="whitespace-pre-line">{post.text}</p>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-medium">Status:</span>
-                      {post.completed ? (
-                        <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                          Concluído
-                        </span>
-                      ) : (
-                        <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                          Pendente
-                        </span>
-                      )}
-                    </div>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleStatusChange}
+                <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-6">
+                  {post.title}
+                </h2>
+              )}
+              
+              <div className="flex items-center space-x-4">
+                {!isEditing && (
+                  <Button
+                    onClick={handleEditMode}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    style={{ borderColor: `${client.themeColor}40`, color: client.themeColor }}
+                  >
+                    <Edit className="w-4 h-4" />
+                    Editar
+                  </Button>
+                )}
+                
+                {isEditing && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleCancelEdit}
+                      variant="outline"
+                      className="flex items-center gap-2 border-gray-200"
                     >
-                      {post.completed ? 'Marcar como pendente' : 'Marcar como concluído'}
+                      <X className="w-4 h-4" />
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleSaveEdit}
+                      className="flex items-center gap-2 text-white"
+                      style={{ backgroundColor: client.themeColor }}
+                    >
+                      <Save className="w-4 h-4" />
+                      Salvar
                     </Button>
                   </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+                <Calendar 
+                  className="w-5 h-5 mr-2"
+                  style={{ color: client.themeColor }}
+                />
+                Texto da Publicação
+              </h3>
+              
+              {isEditing ? (
+                <Textarea 
+                  value={editedPost?.text || ''}
+                  onChange={(e) => setEditedPost(prev => prev ? {...prev, text: e.target.value} : null)}
+                  className="min-h-[150px] text-gray-600 leading-relaxed"
+                />
+              ) : (
+                <div className="whitespace-pre-line text-gray-600 text-md leading-relaxed">
+                  {post.text}
+                  <Button
+                    onClick={() => handleCopyText(post.text)}
+                    variant="outline"
+                    size="sm"
+                    className="mt-4 text-xs"
+                  >
+                    Copiar texto
+                  </Button>
                 </div>
               )}
             </div>
+            
+            <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-lg font-semibold text-gray-700 flex items-center">
+                  <Image 
+                    className="w-5 h-5 mr-2"
+                    style={{ color: client.themeColor }}
+                  />
+                  Imagens e Arquivos
+                  <span className="ml-2 text-sm font-normal text-gray-500">
+                    {post?.images?.length || 0} {(post?.images?.length || 0) === 1 ? 'anexo' : 'anexos'}
+                  </span>
+                </h3>
+                
+                <div className="flex items-center">
+                  <label className="cursor-pointer bg-white hover:bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 flex items-center text-sm transition-colors shadow-sm">
+                    <Upload className="w-4 h-4 mr-2 text-gray-600" />
+                    <span>{isUploading ? "Enviando..." : "Adicionar arquivo"}</span>
+                    <input 
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleImageUpload}
+                      disabled={isUploading}
+                    />
+                  </label>
+                </div>
+              </div>
+              
+              {post.images && post.images.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {post.images.map((img, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={img} 
+                        alt={`Imagem ${index + 1}`} 
+                        className="w-full h-40 object-cover rounded-lg border border-gray-200" 
+                      />
+                      <button
+                        onClick={() => handleRemoveImage(index)}
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 opacity-100 transition-opacity"
+                      >
+                        <X className="w-4 h-4 text-red-500" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Upload className="w-8 h-8 mx-auto mb-2 opacity-25" />
+                  <p>Nenhum arquivo anexado</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                Anotações
+              </h3>
+              <Textarea 
+                value={post.notes}
+                onChange={(e) => handleUpdateNotes(e.target.value)}
+                placeholder="Adicionar notas sobre esta postagem..."
+                className="min-h-[100px]"
+              />
+            </div>
           </div>
-          
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Visualização da Postagem</h2>
-            <CalendarEntry
-              date={post.date}
-              day={post.dayOfWeek}
-              title={post.title}
-              type={post.postType}
-              text={post.text}
-              highlighted={true}
-              themeColor={client.themeColor}
-              completed={post.completed}
-              hideIcons={true}
-              preview={true}
-            />
-          </div>
-        </div>
-      </main>
-
-      <DeleteConfirmDialog
-        open={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        onConfirm={handleDeleteConfirm}
-        title="Excluir Postagem"
-        description="Tem certeza que deseja excluir esta postagem? Esta ação não pode ser desfeita."
-      />
+        </TransitionLayout>
+        
+        <footer className="mt-16 text-center text-gray-500 text-sm">
+          <p>Agenda de Postagens • {settings.ownerName}</p>
+        </footer>
+      </div>
     </div>
   );
 };
