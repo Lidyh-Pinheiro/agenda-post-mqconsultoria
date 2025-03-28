@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { useSettings, Client } from '@/contexts/SettingsContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import SettingsModal from '@/components/SettingsModal';
 import AddPostModal from '@/components/AddPostModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';

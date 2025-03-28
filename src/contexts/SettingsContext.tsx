@@ -31,6 +31,7 @@ interface SettingsContextType {
   selectClient: (id: string | null) => void;
   setSelectedClient: (id: string | null) => void;
   getSelectedClient: () => Client | null;
+  getClient: (id: string | undefined) => Client | null;
   selectedClient: string | null;
   generateClientShareLink: (clientId: string) => string;
   updateClientPostsCount: (clientId: string, count: number) => void;
@@ -171,6 +172,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return settings.clients.find(client => client.id === settings.selectedClientId) || null;
   };
 
+  const getClient = (id: string | undefined) => {
+    if (!id) return null;
+    return settings.clients.find(client => client.id === id) || null;
+  };
+
   const generateClientShareLink = (clientId: string) => {
     const baseUrl = window.location.origin;
     return `${baseUrl}/shared/client/${clientId}`;
@@ -206,6 +212,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setSelectedClient,
         selectedClient: settings.selectedClientId,
         getSelectedClient,
+        getClient,
         generateClientShareLink,
         updateClientPostsCount,
         shareClient,
