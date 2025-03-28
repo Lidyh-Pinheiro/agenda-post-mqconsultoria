@@ -15,6 +15,8 @@ export interface Client {
 export interface Settings {
   companyName: string;
   ownerName: string;
+  email: string;
+  password: string;
   clients: Client[];
   selectedClientId: string | null;
 }
@@ -24,6 +26,8 @@ interface SettingsContextType {
   clients: Client[];
   updateCompanyName: (name: string) => void;
   updateOwnerName: (name: string) => void;
+  updateEmail: (email: string) => void;
+  updatePassword: (password: string) => void;
   addClient: (name: string, themeColor: string, password: string) => string;
   createClient: (client: Partial<Client>) => void;
   updateClient: (id: string, name: string, themeColor: string, password?: string) => void;
@@ -43,6 +47,8 @@ interface SettingsContextType {
 const defaultSettings: Settings = {
   companyName: 'MQ Consultoria',
   ownerName: 'Administrador',
+  email: 'admin@example.com',
+  password: 'admin123',
   clients: [
     {
       id: uuidv4(),
@@ -79,6 +85,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateOwnerName = (name: string) => {
     setSettings(prev => ({ ...prev, ownerName: name }));
+  };
+
+  const updateEmail = (email: string) => {
+    setSettings(prev => ({ ...prev, email: email }));
+  };
+
+  const updatePassword = (password: string) => {
+    setSettings(prev => ({ ...prev, password: password }));
   };
 
   const addClient = (name: string, themeColor: string, password: string) => {
@@ -211,6 +225,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         clients: settings.clients, 
         updateCompanyName,
         updateOwnerName, 
+        updateEmail,
+        updatePassword,
         addClient,
         createClient,
         updateClient, 

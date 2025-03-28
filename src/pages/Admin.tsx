@@ -235,6 +235,10 @@ const Admin = () => {
                     <p className="text-sm font-medium text-gray-700">Administrador</p>
                     <p className="text-lg font-semibold">{settings.ownerName || "Administrador"}</p>
                   </div>
+                  <div className="p-3 bg-blue-50 rounded-md">
+                    <p className="text-sm font-medium text-blue-700">Email</p>
+                    <p className="text-lg font-semibold">{settings.email || "admin@example.com"}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
