@@ -125,7 +125,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
     printWindow.document.close();
     printWindow.focus();
     
-    // Add slight delay to allow styles to load
     setTimeout(() => {
       printWindow.print();
       // Don't close window, allowing user to cancel print or view

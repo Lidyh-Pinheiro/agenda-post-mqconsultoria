@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar as CalendarIcon, X, CheckIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, X, CheckIcon, Facebook, Instagram, Twitter, Linkedin, Youtube } from 'lucide-react';
 import { 
   Dialog, 
   DialogContent, 
@@ -43,7 +44,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Facebook, Instagram, Twitter, Linkedin, Youtube, TikTok } from 'lucide-react';
 
 interface AddPostModalProps {
   open: boolean;
@@ -87,7 +87,22 @@ const SOCIAL_NETWORKS = [
   { id: 'twitter', label: 'Twitter', icon: Twitter },
   { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
   { id: 'youtube', label: 'YouTube', icon: Youtube },
-  { id: 'tiktok', label: 'TikTok', icon: TikTok },
+  { id: 'tiktok', label: 'TikTok', icon: ({ className }: { className?: string }) => (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className || "w-4 h-4"}
+    >
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  ) },
 ];
 
 const AddPostModal: React.FC<AddPostModalProps> = ({ 
@@ -277,7 +292,10 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
                       htmlFor={`checkbox-${network.id}`}
                       className="flex items-center cursor-pointer"
                     >
-                      <network.icon className="h-4 w-4 mr-1" />
+                      {typeof network.icon === 'function' 
+                        ? <network.icon className="h-4 w-4 mr-1" />
+                        : <network.icon className="h-4 w-4 mr-1" />
+                      }
                       <span>{network.label}</span>
                     </Label>
                   </div>
