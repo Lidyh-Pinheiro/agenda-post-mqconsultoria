@@ -1,8 +1,8 @@
 
-// This file provides a mock Supabase client for local storage usage
-// No actual Supabase connection is being made
+// This file provides a mock client for local storage usage
+// No actual connections are being made
 
-// Mock Supabase client
+// Mock client
 export const supabase = {
   from: () => ({
     select: () => ({

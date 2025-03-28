@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Lock, MessageCircle } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { toast } from "sonner";
+import { toast } from 'sonner';
 
 interface CalendarPost {
   id: number;
