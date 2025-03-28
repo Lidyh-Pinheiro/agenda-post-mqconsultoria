@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -263,7 +264,7 @@ const SharedClientAgenda = () => {
             {client.name}
           </h2>
           <p className="text-gray-700 mt-2">
-            {client.description || "Confira abaixo as postagens planejadas"}
+            {client.description || "Planejamento da Semana/Mês"}
           </p>
           
           <div className="mt-4 flex items-center justify-center gap-3">
@@ -289,7 +290,7 @@ const SharedClientAgenda = () => {
         </div>
         
         {posts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr print:grid-cols-2 print:gap-5">
+          <div className="grid grid-cols-1 gap-6 auto-rows-fr print:gap-5">
             {posts.map((post) => (
               <div key={post.id} className="flex print:page-break-inside-avoid">
                 <CalendarEntry

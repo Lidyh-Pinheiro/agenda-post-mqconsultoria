@@ -129,7 +129,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             }
             .card-container { 
               display: grid; 
-              grid-template-columns: repeat(2, 1fr);
+              grid-template-columns: 1fr;
               gap: 20px; 
               width: 100%;
             }
@@ -221,7 +221,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               }
               .card-container {
                 display: grid;
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr;
                 gap: 20px;
                 width: 100%;
               }
@@ -230,7 +230,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 break-inside: avoid; 
                 page-break-inside: avoid;
                 border: 1px solid rgba(255, 255, 255, 0.3);
-                margin-bottom: 0;
+                margin-bottom: 20px;
                 width: 100%;
                 overflow: hidden;
                 box-shadow: none;
@@ -256,7 +256,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
           <div class="agenda-header">
             <h1>Agenda de Postagens</h1>
             <h2>${client.name}</h2>
-            <p>${client.description || "Confira abaixo as postagens planejadas"}</p>
+            <p>${client.description || "Planejamento da Semana/Mês"}</p>
             <p>${new Date().toLocaleDateString('pt-BR')}</p>
           </div>
           

@@ -145,7 +145,7 @@
   .calendar-entry {
     page-break-inside: avoid;
     break-inside: avoid;
-    margin-bottom: 1.5rem;
+    margin-bottom: 20px;
     box-shadow: none !important;
     border: 1px solid rgba(255, 255, 255, 0.3) !important;
     transform: none !important;
@@ -182,11 +182,11 @@
     text-shadow: 0 0 1px rgba(0,0,0,0.5);
   }
   
-  /* Fix grid layout for printing */
+  /* Fix grid layout for printing - now we want a single column */
   .grid {
     display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 1.5rem !important;
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
     width: 100% !important;
     max-width: 100% !important;
   }
@@ -210,7 +210,7 @@
     border: 1px solid rgba(255, 255, 255, 0.3) !important;
     padding: 1.5rem !important;
     border-radius: 1rem !important;
-    margin-bottom: 1rem !important;
+    margin-bottom: 20px !important;
   }
   
   /* Preserve date badge style */
@@ -246,8 +246,8 @@
     background: linear-gradient(to bottom right, rgba(220, 38, 38, 0.1), white);
   }
   
-  /* Ensure two columns for printing */
-  .print\:grid-cols-1 {
-    grid-template-columns: repeat(2, 1fr) !important;
+  /* Ensure single column for printing */
+  .print\:grid-cols-1, .grid {
+    grid-template-columns: 1fr !important;
   }
 }
