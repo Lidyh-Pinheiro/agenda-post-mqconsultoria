@@ -15,13 +15,16 @@ interface ClientCardProps {
 }
 
 const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onShare, onDelete }) => {
-  // Create pie chart data
+  // Ensure client and postsCount exist before using them
+  const postsCount = client?.postsCount || 0;
+  
+  // Create pie chart data with null safety
   const pieData = [
-    { name: 'Posts', value: client.postsCount || 0 },
-    { name: 'Remaining', value: Math.max(10 - (client.postsCount || 0), 0) }, // Use 10 as an arbitrary target
+    { name: 'Posts', value: postsCount },
+    { name: 'Remaining', value: Math.max(10 - postsCount, 0) }, // Use 10 as an arbitrary target
   ];
   
-  const COLORS = [client.themeColor, '#f3f4f6'];
+  const COLORS = [client?.themeColor || '#6366f1', '#f3f4f6'];
   
   return (
     <Card 
@@ -31,24 +34,24 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onSha
         <div className="flex items-center justify-between mb-4">
           <div 
             className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: client.themeColor }}
+            style={{ backgroundColor: client?.themeColor || '#6366f1' }}
           >
             <Users className="w-6 h-6 text-white" />
           </div>
           <div className="flex items-center gap-1">
             <div 
               className="text-xs font-medium px-2 py-1 rounded-full"
-              style={{ backgroundColor: `${client.themeColor}20`, color: client.themeColor }}
+              style={{ backgroundColor: `${client?.themeColor || '#6366f1'}20`, color: client?.themeColor || '#6366f1' }}
             >
               Cliente
             </div>
-            {(client.postsCount && client.postsCount > 0) && (
+            {postsCount > 0 && (
               <div 
                 className="text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1"
-                style={{ backgroundColor: `${client.themeColor}20`, color: client.themeColor }}
+                style={{ backgroundColor: `${client?.themeColor || '#6366f1'}20`, color: client?.themeColor || '#6366f1' }}
               >
                 <Calendar className="w-3 h-3" />
-                {client.postsCount}
+                {postsCount}
               </div>
             )}
           </div>
@@ -56,22 +59,25 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onSha
         
         <div className="flex justify-between mb-4">
           <div>
-            <h3 className="text-xl font-semibold mb-2">{client.name}</h3>
+            <h3 className="text-xl font-semibold mb-2">{client?.name || 'Client'}</h3>
             
             <div className="flex items-center text-gray-500 text-sm">
               <Calendar className="w-4 h-4 mr-1" />
               <span>
-                {new Date(client.createdAt).toLocaleDateString('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric'
-                })}
+                {client?.createdAt 
+                  ? new Date(client.createdAt).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    })
+                  : 'N/A'
+                }
               </span>
             </div>
           </div>
           
           {/* Small pie chart */}
-          {client.postsCount > 0 && (
+          {postsCount > 0 && (
             <div className="w-16 h-16">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -102,7 +108,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onSha
             variant="default"
             size="sm"
             className="flex-1"
-            style={{ backgroundColor: client.themeColor }}
+            style={{ backgroundColor: client?.themeColor || '#6366f1' }}
           >
             <Calendar className="w-4 h-4 mr-1" />
             Agenda

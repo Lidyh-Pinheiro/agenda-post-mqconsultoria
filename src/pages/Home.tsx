@@ -79,7 +79,7 @@ const Home = () => {
             title={settings.companyName} 
             subtitle="Gerenciador de Clientes" 
             themeColor="#0f172a"
-            showSettings={true}
+            showSettings
             onSettingsClick={() => setSettingsOpen(true)}
           />
           
@@ -87,9 +87,10 @@ const Home = () => {
             {settings.clients.map((client) => (
               <ClientCard 
                 key={client.id}
-                name={client.name}
-                color={client.themeColor}
-                onClick={() => handleSelectClient(client.id)}
+                client={client}
+                onSelect={() => handleSelectClient(client.id)}
+                onEdit={() => navigate(`/client/${client.id}`)}
+                onShare={() => navigate(`/client/${client.id}`)}
                 onDelete={() => handleDeleteRequest(client.id, client.name)}
               />
             ))}
@@ -122,8 +123,8 @@ const Home = () => {
         open={passwordConfirmOpen}
         onOpenChange={setPasswordConfirmOpen}
         onConfirm={handlePasswordConfirm}
-        password={passwordInput}
-        setPassword={setPasswordInput}
+        passwordValue={passwordInput}
+        setPasswordValue={setPasswordInput}
         title="Confirmar senha do cliente"
         description="Para excluir este cliente, por favor, confirme a senha."
       />
