@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Lock, MessageCircle, Eye, EyeOff, Printer } from 'lucide-react';
+import { Lock, MessageCircle, Eye, EyeOff, Instagram, Facebook, Link } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
@@ -169,8 +169,18 @@ const ClientView = () => {
     setShowPassword(!showPassword);
   };
   
-  const handlePrint = () => {
-    window.print();
+  const copyUrl = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    toast.success("URL copiada!", {
+      description: "Link de acesso copiado para a área de transferência."
+    });
+  };
+  
+  const shareViaWhatsApp = () => {
+    const url = window.location.href;
+    const text = `Confira a agenda de postagens de ${client?.name}: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
   
   if (loading) {
@@ -290,32 +300,31 @@ const ClientView = () => {
             {client.description || "Planejamento da Semana/Mês"}
           </p>
           
-          <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
-            <a 
-              href="https://wa.me/91993299153" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-full transition-colors"
+          <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
+            <Button
+              onClick={shareViaWhatsApp}
+              className="inline-flex items-center gap-2 text-white"
+              style={{ backgroundColor: "#25D366" }}
             >
               <MessageCircle className="h-5 w-5" />
-              <span>Suporte via WhatsApp</span>
-            </a>
+              <span>Compartilhar via WhatsApp</span>
+            </Button>
             
             <Button
-              onClick={handlePrint}
+              onClick={copyUrl}
               variant="outline"
-              className="inline-flex items-center gap-2 print:hidden"
+              className="inline-flex items-center gap-2"
             >
-              <Printer className="h-5 w-5" />
-              <span>Imprimir Agenda</span>
+              <Link className="h-5 w-5" />
+              <span>Copiar Link</span>
             </Button>
           </div>
         </div>
         
         {posts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr print:grid-cols-2 print:gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
             {posts.map((post) => (
-              <div key={post.id} className="flex print:page-break-inside-avoid">
+              <div key={post.id} className="flex">
                 <CalendarEntry
                   date={post.date + (post.time ? ` ${post.time}` : '')}
                   day={post.dayOfWeek}
@@ -328,7 +337,7 @@ const ClientView = () => {
                   socialNetworks={post.socialNetworks}
                   preview={true}
                   hideIcons={true}
-                  className="print:break-inside-avoid print:shadow-none"
+                  className="w-full"
                 />
               </div>
             ))}

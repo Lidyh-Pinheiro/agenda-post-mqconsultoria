@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Home from "./pages/Home";
-import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ClientAgenda from "./pages/ClientAgenda";
 import ClientPostDetail from "./pages/ClientPostDetail";
@@ -81,14 +80,6 @@ const App = () => {
                 } 
               />
               <Route 
-                path="/agenda" 
-                element={
-                  <ProtectedRoute>
-                    <Index />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
                 path="/client/:clientId" 
                 element={
                   <ProtectedRoute>
@@ -113,7 +104,7 @@ const App = () => {
                   </AdminRoute>
                 } 
               />
-              {/* Unified client view page - accessible without login */}
+              {/* Client view page - accessible without login */}
               <Route path="/client-view/:clientId" element={<ClientView />} />
               {/* Redirect old routes to new one */}
               <Route path="/shared/client/:clientId" element={<Navigate to="/client-view/:clientId" replace />} />
