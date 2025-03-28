@@ -6,6 +6,7 @@ import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import { Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface CalendarPost {
   id: number;
@@ -44,17 +45,30 @@ const SharedClientAgenda = () => {
       // Load the posts for this client
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-        
-        // Sort posts by date
-        const sortedPosts = [...clientPosts].sort((a, b) => {
-          const dateA = new Date(a.date.split('/').reverse().join('/'));
-          const dateB = new Date(b.date.split('/').reverse().join('/'));
-          return dateA.getTime() - dateB.getTime();
-        });
-        
-        setPosts(sortedPosts);
+        try {
+          const allPosts = JSON.parse(storedPosts);
+          const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+          
+          console.log('Client ID:', clientId);
+          console.log('Total posts found:', allPosts.length);
+          console.log('Filtered posts for client:', clientPosts.length);
+          
+          if (clientPosts.length === 0) {
+            console.log('No posts found for this client');
+          }
+          
+          // Sort posts by date
+          const sortedPosts = [...clientPosts].sort((a, b) => {
+            const dateA = new Date(a.date.split('/').reverse().join('-'));
+            const dateB = new Date(b.date.split('/').reverse().join('-'));
+            return dateA.getTime() - dateB.getTime();
+          });
+          
+          setPosts(sortedPosts);
+        } catch (error) {
+          console.error('Error parsing stored posts:', error);
+          toast.error('Erro ao carregar as postagens');
+        }
       }
     }
     setLoading(false);
