@@ -26,8 +26,8 @@ const PasswordConfirmDialog: React.FC<PasswordConfirmDialogProps> = ({
   open,
   onOpenChange,
   onConfirm,
-  title = "Confirmação de exclusão",
-  description = "Para confirmar a exclusão, por favor digite a senha do cliente."
+  title = "Confirmar",
+  description = "Para confirmar, por favor digite a senha do cliente."
 }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
