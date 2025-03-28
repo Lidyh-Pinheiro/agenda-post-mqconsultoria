@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -60,7 +59,6 @@ const ClientAgenda = () => {
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [editingPost, setEditingPost] = useState<CalendarPost | null>(null);
   
-  // Find the client by ID
   useEffect(() => {
     if (!clientId) return;
     
@@ -68,12 +66,10 @@ const ClientAgenda = () => {
     if (foundClient) {
       setClient(foundClient);
     } else {
-      // Client not found, redirect to home
       navigate('/');
     }
   }, [clientId, settings.clients, navigate]);
   
-  // Load posts from localStorage
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts && clientId) {
@@ -83,14 +79,12 @@ const ClientAgenda = () => {
     }
   }, [clientId]);
   
-  // Save posts to localStorage
   useEffect(() => {
     if (posts.length > 0 || postToDelete !== null) {
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         const allPosts = JSON.parse(storedPosts);
         
-        // Filter out both the client's old posts and any post being deleted
         const otherPosts = allPosts.filter((p: CalendarPost) => 
           p.clientId !== clientId || 
           (postToDelete !== null && p.id === postToDelete)
@@ -103,7 +97,6 @@ const ClientAgenda = () => {
     }
   }, [posts, clientId, postToDelete]);
   
-  // Apply animation to posts
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisiblePosts(posts);
@@ -112,7 +105,6 @@ const ClientAgenda = () => {
     return () => clearTimeout(timer);
   }, [posts]);
   
-  // Apply month filter to posts
   useEffect(() => {
     if (posts.length > 0) {
       if (filterMonth === 'all') {
@@ -127,21 +119,17 @@ const ClientAgenda = () => {
     }
   }, [filterMonth, posts]);
   
-  // Helper function to sort posts by date
   const sortPostsByDate = (postsToSort: CalendarPost[]): CalendarPost[] => {
     return [...postsToSort].sort((a, b) => {
-      // Parse dates in format DD/MM
       const dateA = parse(a.date, 'dd/MM', new Date());
       const dateB = parse(b.date, 'dd/MM', new Date());
       
-      // Sort by date
       return dateA.getTime() - dateB.getTime();
     });
   };
   
   const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
     if (editingPost) {
-      // Update existing post
       const updatedPosts = posts.map(post => 
         post.id === editingPost.id 
           ? { ...post, ...newPostData, id: editingPost.id } 
@@ -156,7 +144,6 @@ const ClientAgenda = () => {
         duration: 3000,
       });
     } else {
-      // Add new post
       const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
       const newPost: CalendarPost = {
         id: newId,
@@ -183,10 +170,8 @@ const ClientAgenda = () => {
   const handleDeletePost = () => {
     if (postToDelete === null) return;
     
-    // Remove from state
     setPosts(prev => prev.filter(post => post.id !== postToDelete));
     
-    // Delete from localStorage directly
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
       const allPosts = JSON.parse(storedPosts);
