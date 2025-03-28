@@ -1,146 +1,120 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { TransitionLayout } from '@/components/TransitionLayout';
-import Header from '@/components/Header';
-import CalendarEntry from '@/components/CalendarEntry';
-import { useSettings, Client } from '@/contexts/SettingsContext';
-import { ArrowLeft } from 'lucide-react';
+import { Calendar, ChevronLeft, LogOut } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Post } from '@/contexts/SettingsContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import PostList from '@/components/PostList';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-interface CalendarPost {
-  id: number;
-  date: string;
-  day: string;
-  dayOfWeek: string;
-  title: string;
-  type: string;
-  postType: string;
-  text: string;
-  completed?: boolean;
-  notes?: string;
-  images?: string[];
-  clientId?: string;
+interface RouteParams {
+  clientId: string;
 }
 
 const ClientAgenda = () => {
-  const { clientId } = useParams<{ clientId: string }>();
+  const { clientId } = useParams<RouteParams>();
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const navigate = useNavigate();
-  const { settings } = useSettings();
-  
-  const [client, setClient] = useState<Client | null>(null);
-  const [posts, setPosts] = useState<CalendarPost[]>([]);
-  const [visiblePosts, setVisiblePosts] = useState<CalendarPost[]>([]);
-  
-  // Find the client by ID
-  useEffect(() => {
-    if (!clientId) return;
-    
-    const foundClient = settings.clients.find(c => c.id === clientId);
-    if (foundClient) {
-      setClient(foundClient);
-    } else {
-      // Client not found, redirect to home
-      navigate('/');
-    }
-  }, [clientId, settings.clients, navigate]);
-  
-  // Load posts from localStorage
-  useEffect(() => {
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      
-      // Filter posts for this client if clientId exists in posts
-      // Otherwise, show all posts (for backward compatibility)
-      if (clientId) {
-        const filteredPosts = allPosts.filter(
-          (post: CalendarPost) => !post.clientId || post.clientId === clientId
-        );
-        setPosts(filteredPosts);
-      } else {
-        setPosts(allPosts);
-      }
-    }
-  }, [clientId]);
-  
-  // Animate posts appearing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setVisiblePosts(posts);
-    }, 300);
 
-    return () => clearTimeout(timer);
-  }, [posts]);
-  
-  const handleSelectPost = (post: CalendarPost) => {
-    // For public client view, we just view the post details without editing
-    navigate(`/client/${clientId}/post/${post.id}`);
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    navigate('/login');
   };
-  
+
+  const { data: client, isLoading, isError } = useQuery(
+    ['client', clientId],
+    async () => {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single();
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      return data;
+    }
+  );
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      if (!clientId) return;
+
+      const formattedDate = format(selectedDate, 'yyyy-MM-dd', { locale: ptBR });
+
+      const { data: postsData, error } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('client_id', clientId)
+        .eq('date', formattedDate)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching posts:', error);
+        return;
+      }
+
+      setPosts(postsData || []);
+    };
+
+    fetchPosts();
+  }, [clientId, selectedDate]);
+
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
+
+  if (isError || !client) {
+    return <div>Erro ao carregar os dados do cliente.</div>;
+  }
+
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
+  };
+
   return (
-    <div 
-      className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
-      style={{ backgroundImage: client ? `linear-gradient(to bottom right, ${client.themeColor}10, white)` : undefined }}
-    >
-      <div 
-        className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
-        style={{ backgroundColor: client ? `${client.themeColor}20` : undefined }}
-      />
-      <div 
-        className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
-        style={{ backgroundColor: client ? `${client.themeColor}20` : undefined }}
-      />
-      
-      <div className="max-w-5xl mx-auto px-4 py-16">
-        <TransitionLayout>
-          <Button 
-            onClick={() => navigate('/')}
-            variant="ghost"
-            className="mb-6 flex items-center text-gray-600 hover:text-gray-800"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar ao início
+    <div className="container mx-auto px-4 py-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Voltar
           </Button>
-          
-          <Header 
-            title={client?.name || 'Agenda de Postagens'} 
-            subtitle="Calendário de Publicações" 
-            themeColor={client?.themeColor}
-          />
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            {visiblePosts.map((post, index) => (
-              <div 
-                key={post.id}
-                className="animate-scale-in"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <CalendarEntry
-                  date={post.date}
-                  day={post.dayOfWeek}
-                  title={post.title}
-                  type={post.postType}
-                  text={post.text}
-                  highlighted={true}
-                  themeColor={client?.themeColor}
-                  completed={post.completed}
-                  onSelect={() => handleSelectPost(post)}
-                />
-              </div>
-            ))}
-            
-            {visiblePosts.length === 0 && (
-              <div className="col-span-2 text-center py-20">
-                <p className="text-gray-500">Nenhuma postagem encontrada.</p>
-              </div>
-            )}
-          </div>
-        </TransitionLayout>
-        
-        <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p>Agenda de Postagens • {settings.ownerName}</p>
-        </footer>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="flex items-center gap-1"
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
+        </div>
+        <h1 className="text-2xl font-semibold">{client?.name}</h1>
       </div>
+
+      <Card className="mb-6">
+        <div className="p-4">
+          <h2 className="text-lg font-semibold mb-3">
+            <Calendar className="inline-block w-5 h-5 mr-1 align-middle" />
+            Selecione uma data
+          </h2>
+          <input
+            type="date"
+            className="w-full p-2 border rounded"
+            value={format(selectedDate, 'yyyy-MM-dd', { locale: ptBR })}
+            onChange={(e) => handleDateChange(new Date(e.target.value))}
+          />
+        </div>
+      </Card>
+
+      <PostList posts={posts} clientId={clientId} />
     </div>
   );
 };

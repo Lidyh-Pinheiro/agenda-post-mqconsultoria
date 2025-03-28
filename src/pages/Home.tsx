@@ -1,260 +1,277 @@
-
-import React, { useState } from 'react';
-import { TransitionLayout } from '@/components/TransitionLayout';
-import Header from '@/components/Header';
-import { useSettings } from '@/contexts/SettingsContext';
+import React, { useState, useEffect } from 'react';
+import { Plus, Settings, Calendar, ChevronLeft, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Settings, Calendar, UserPlus, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import SettingsModal from '@/components/SettingsModal';
+import { useToast } from "@/hooks/use-toast";
+
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Checkbox } from '@/components/ui/checkbox';
+import { SettingsContext, useSettings } from '@/contexts/SettingsContext';
 import ClientCard from '@/components/ClientCard';
 import ClientTable from '@/components/ClientTable';
-import ShareModal from '@/components/ShareModal';
-import PasswordConfirmDialog from '@/components/PasswordConfirmDialog'; // Import the new component
-import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner'; // Import toast for notification
+
+const formSchema = z.object({
+  name: z.string().min(2, {
+    message: "Nome deve ter pelo menos 2 caracteres.",
+  }),
+  themeColor: z.string().min(4, {
+    message: "Cor inválida",
+  }),
+  active: z.boolean().default(true).optional(),
+  description: z.string().optional(),
+})
 
 const Home = () => {
-  const { settings, selectClient, addClient, deleteClient } = useSettings();
+  const [openSettingsModal, setOpenSettingsModal] = useState(false);
+  const [isTableView, setIsTableView] = useState(false);
+  const { toast } = useToast();
+  const {
+    clients,
+    createClient,
+    updateClient,
+    deleteClient,
+    shareClient,
+    selectedClient,
+    setSelectedClient
+  } = useSettings();
   const navigate = useNavigate();
-  
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editClientId, setEditClientId] = useState<string | null>(null);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [shareClientId, setShareClientId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  
-  // Add state for password confirmation dialog
-  const [deletePasswordDialogOpen, setDeletePasswordDialogOpen] = useState(false);
-  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
-  
-  const handleSelectClient = (clientId: string) => {
-    selectClient(clientId);
-    navigate('/agenda');
-  };
-  
-  const handleAddClient = () => {
-    setSettingsOpen(true);
-  };
-  
-  const handleOpenCalendar = () => {
-    // Navigate directly to agenda without selecting a client
-    navigate('/agenda');
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      themeColor: "#1E3A8A",
+      active: true,
+      description: "",
+    },
+  })
+
+  const handleOpenSettingsModal = () => {
+    setOpenSettingsModal(true);
   };
 
-  const handleEditClient = (clientId: string) => {
-    setEditClientId(clientId);
-    setSettingsOpen(true);
+  const handleCloseSettingsModal = () => {
+    setOpenSettingsModal(false);
+    form.reset();
+  };
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    createClient({
+      ...values,
+      postsCount: 0,
+      createdAt: new Date().toISOString(),
+    });
+    toast({
+      title: "Cliente criado com sucesso!",
+      description: "O cliente foi adicionado à sua lista.",
+    })
+    handleCloseSettingsModal();
+  }
+
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClient(clientId);
+    navigate(`/client/${clientId}`);
+  };
+
+  const handleEditClient = (client: any) => {
+    setSelectedClient(client.id);
+    form.setValue("name", client.name);
+    form.setValue("themeColor", client.themeColor);
+    form.setValue("active", client.active);
+    form.setValue("description", client.description);
+    handleOpenSettingsModal();
   };
 
   const handleShareClient = (clientId: string) => {
-    setShareClientId(clientId);
-    setShareModalOpen(true);
-  };
-  
-  // New handlers for client deletion with password confirmation
-  const handleOpenDeleteDialog = (clientId: string) => {
-    setClientToDelete(clientId);
-    setDeletePasswordDialogOpen(true);
+    shareClient(clientId);
+    toast({
+      title: "Cliente compartilhado com sucesso!",
+      description: "O cliente foi compartilhado com sua equipe.",
+    })
   };
 
-  const handleDeleteClient = (password: string) => {
-    if (!clientToDelete) return;
-    
-    const success = deleteClient(clientToDelete, password);
-    
-    if (success) {
-      setDeletePasswordDialogOpen(false);
-      setClientToDelete(null);
-      toast.success('Cliente excluído com sucesso!');
-    } else {
-      toast.error('Senha incorreta. Exclusão cancelada.');
-    }
+  const handleDeleteClient = (clientId: string) => {
+    deleteClient(clientId);
+    toast({
+      title: "Cliente removido com sucesso!",
+      description: "O cliente foi removido da sua lista.",
+    })
   };
-  
+
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    navigate('/login');
+  };
+
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white">
-      <div className="fixed top-0 right-0 w-1/3 h-1/3 bg-red-100 rounded-bl-full opacity-30 -z-10" />
-      <div className="fixed bottom-0 left-0 w-1/2 h-1/2 bg-red-100 rounded-tr-full opacity-20 -z-10" />
-      
-      <div className="max-w-5xl mx-auto px-4 py-16">
-        <TransitionLayout>
-          <Header 
-            title="Dashboard" 
-            subtitle={settings.companyName}
-            showSettings={true}
-            onOpenSettings={() => setSettingsOpen(true)}
-          />
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                    <UserPlus className="w-6 h-6 text-red-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-700">Clientes</h3>
-                    <p className="text-3xl font-semibold">{settings.clients.length}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-700">Agendas</h3>
-                    <p className="text-3xl font-semibold">
-                      {settings.clients.reduce((total, client) => total + (client.postsCount || 0), 0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-700">Postagens</h3>
-                    <p className="text-3xl font-semibold">
-                      {settings.clients.reduce((total, client) => total + (client.postsCount || 0), 0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">Clientes</h2>
-            
-            <div className="flex gap-2">
-              <Button 
-                onClick={handleAddClient}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold">Gerenciamento de Clientes</h1>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="flex items-center gap-1"
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
+          <Button onClick={handleOpenSettingsModal}>
+            Configurações
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-semibold">Clientes</h2>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={() => setIsTableView(!isTableView)}>
+            {isTableView ? "Visualização em Card" : "Visualização em Tabela"}
+          </Button>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
                 Adicionar Cliente
               </Button>
-              
-              <Button 
-                onClick={handleOpenCalendar}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-              >
-                <Calendar className="w-4 h-4" />
-                Agenda Principal
-              </Button>
-            </div>
-          </div>
-          
-          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'cards' | 'table')}>
-            <div className="flex justify-end mb-4">
-              <TabsList>
-                <TabsTrigger value="cards">Cards</TabsTrigger>
-                <TabsTrigger value="table">Tabela</TabsTrigger>
-              </TabsList>
-            </div>
-            
-            <TabsContent value="cards" className="mt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {settings.clients.map((client) => (
-                  <ClientCard
-                    key={client.id}
-                    client={client}
-                    onSelect={() => handleSelectClient(client.id)}
-                    onEdit={() => handleEditClient(client.id)}
-                    onShare={() => handleShareClient(client.id)}
-                    onDelete={() => handleOpenDeleteDialog(client.id)} // Update to use password confirmation
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Adicionar Cliente</DialogTitle>
+                <DialogDescription>
+                  Crie um novo cliente para gerenciar a agenda de postagens.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nome do cliente" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Este é o nome que será exibido na agenda.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                ))}
-                
-                <div 
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center h-[215px] hover:border-red-300 cursor-pointer transition-colors"
-                  onClick={handleAddClient}
-                >
-                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
-                    <Plus className="w-6 h-6 text-red-600" />
-                  </div>
-                  <p className="text-gray-600 text-center">Adicionar novo cliente</p>
-                </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="table" className="mt-0">
-              <ClientTable 
-                clients={settings.clients}
-                onSelect={handleSelectClient}
-                onEdit={(client) => handleEditClient(client.id)}
-                onShare={(clientId) => handleShareClient(clientId)}
-                onDelete={(clientId) => handleOpenDeleteDialog(clientId)} // Update to use password confirmation
-              />
-              
-              {settings.clients.length === 0 && (
-                <div className="text-center py-10">
-                  <p className="text-gray-500 mb-4">Você ainda não tem clientes cadastrados.</p>
-                  <Button
-                    onClick={handleAddClient}
-                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Adicionar Cliente
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
-          
-          {settings.clients.length === 0 && viewMode === 'cards' && (
-            <div className="text-center py-10">
-              <p className="text-gray-500 mb-4">Você ainda não tem clientes cadastrados.</p>
-              <Button
-                onClick={handleAddClient}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
-              >
-                <Plus className="w-4 h-4" />
-                Adicionar Cliente
-              </Button>
+                  <FormField
+                    control={form.control}
+                    name="themeColor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cor</FormLabel>
+                        <FormControl>
+                          <Input type="color" defaultValue="#1E3A8A" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Escolha uma cor para identificar o cliente.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descrição</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Escreva uma descrição sobre o cliente."
+                            className="resize-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Adicione uma descrição para ajudar a identificar o cliente.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="active"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-md border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Ativo</FormLabel>
+                          <FormDescription>
+                            Defina se o cliente está ativo ou não.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit">Salvar</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {clients.length === 0 ? (
+        <div className="text-center py-6 text-gray-500">
+          Nenhum cliente cadastrado
+        </div>
+      ) : (
+        <>
+          {isTableView ? (
+            <ClientTable
+              clients={clients}
+              onSelect={handleSelectClient}
+              onEdit={handleEditClient}
+              onShare={handleShareClient}
+              onDelete={handleDeleteClient}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {clients.map((client) => (
+                <ClientCard
+                  key={client.id}
+                  client={client}
+                  onSelect={() => handleSelectClient(client.id)}
+                  onEdit={() => handleEditClient(client)}
+                  onShare={() => handleShareClient(client.id)}
+                  onDelete={() => handleDeleteClient(client.id)}
+                />
+              ))}
             </div>
           )}
-        </TransitionLayout>
-        
-        <SettingsModal 
-          open={settingsOpen} 
-          onOpenChange={setSettingsOpen} 
-          initialTab={editClientId ? 'clients' : 'general'}
-          editClientId={editClientId}
-        />
-        
-        <ShareModal 
-          open={shareModalOpen}
-          onOpenChange={setShareModalOpen}
-          clientId={shareClientId}
-        />
-        
-        {/* Add Password Confirmation Dialog */}
-        <PasswordConfirmDialog
-          open={deletePasswordDialogOpen}
-          onOpenChange={setDeletePasswordDialogOpen}
-          onConfirm={handleDeleteClient}
-          title="Confirmar exclusão do cliente"
-          description="Para excluir este cliente, por favor insira a senha cadastrada."
-        />
-        
-        <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p>{settings.companyName} • {new Date().getFullYear()}</p>
-        </footer>
-      </div>
+        </>
+      )}
     </div>
   );
 };
