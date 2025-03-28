@@ -15,20 +15,23 @@ import PasswordConfirmDialog from '@/components/PasswordConfirmDialog';
 import { toast } from 'sonner';
 import { fetchClientById, fetchClientPosts } from '@/integrations/supabase/client';
 
+// Updated interface to match database column names
 interface CalendarPost {
   id: number;
   date: string;
   day: string;
-  dayOfWeek: string;
+  dayofweek: string; // Changed from dayOfWeek to match DB
   title: string;
   type: string;
-  posttype: string;
+  posttype: string; // Changed from postType to match DB
   text: string;
   completed?: boolean;
   notes?: string;
   images?: string[];
-  clientid?: string;
-  socialnetworks?: string[];
+  clientid?: string; // Changed from clientId to match DB
+  socialnetworks?: string[]; // Changed from socialNetworks to match DB
+  month?: string;
+  year?: string;
 }
 
 const ClientView = () => {
@@ -95,7 +98,7 @@ const ClientView = () => {
   
   // Verify password and load client data
   const handlePasswordVerify = async (password: string) => {
-    if (!clientId) return;
+    if (!clientId) return false;
     
     try {
       const clientData = await fetchClientById(clientId, password);
@@ -165,7 +168,6 @@ const ClientView = () => {
         onConfirm={handlePasswordVerify}
         title="Acesso Protegido"
         description="Esta agenda está protegida. Por favor, digite a senha para acessar."
-        onCancel={() => navigate('/')}
       />
     );
   }
@@ -182,15 +184,15 @@ const ClientView = () => {
   return (
     <div 
       className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
-      style={{ backgroundImage: `linear-gradient(to bottom right, ${client.themecolor}10, white)` }}
+      style={{ backgroundImage: `linear-gradient(to bottom right, ${client.themeColor}10, white)` }}
     >
       <div 
         className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
-        style={{ backgroundColor: `${client.themecolor}20` }}
+        style={{ backgroundColor: `${client.themeColor}20` }}
       />
       <div 
         className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
-        style={{ backgroundColor: `${client.themecolor}20` }}
+        style={{ backgroundColor: `${client.themeColor}20` }}
       />
       
       <div className="max-w-5xl mx-auto px-4 py-16">
@@ -198,7 +200,7 @@ const ClientView = () => {
           <Header 
             title={client.name} 
             subtitle="Agenda de Postagens" 
-            themeColor={client.themecolor}
+            themeColor={client.themeColor}
             showSettings={false}
           />
           
@@ -208,7 +210,7 @@ const ClientView = () => {
                 <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                   <Calendar 
                     className="w-5 h-5 mr-2"
-                    style={{ color: client.themecolor }} 
+                    style={{ color: client.themeColor }} 
                   />
                   Calendário
                 </h3>
@@ -225,9 +227,9 @@ const ClientView = () => {
                       }}
                       modifiersStyles={{
                         booked: {
-                          backgroundColor: `${client.themecolor}20`,
+                          backgroundColor: `${client.themeColor}20`,
                           borderRadius: '50%',
-                          color: client.themecolor,
+                          color: client.themeColor,
                           fontWeight: 'bold'
                         }
                       }}
@@ -239,7 +241,7 @@ const ClientView = () => {
             
             <div className="md:col-span-2">
               <h2 className="text-xl font-bold mb-6"
-                style={{ color: client.themecolor }}>
+                style={{ color: client.themeColor }}>
                 Postagens Programadas
               </h2>
               
@@ -253,14 +255,13 @@ const ClientView = () => {
                     <CalendarEntry
                       key={post.id}
                       date={post.date}
-                      day={post.dayOfWeek}
+                      day={post.dayofweek}
                       title={post.title}
                       type={post.posttype}
                       text={post.text}
                       highlighted={true}
-                      themeColor={client.themecolor}
+                      themeColor={client.themeColor}
                       completed={post.completed}
-                      readOnly={true}
                       socialNetworks={post.socialnetworks || []}
                     />
                   ))}

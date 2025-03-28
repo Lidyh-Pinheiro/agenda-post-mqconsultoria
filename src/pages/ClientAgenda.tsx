@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -30,7 +29,7 @@ interface CalendarPost {
   id: number;
   date: string;
   day: string;
-  dayOfWeek: string;
+  dayofweek: string;
   title: string;
   type: string;
   posttype: string;
@@ -42,6 +41,7 @@ interface CalendarPost {
   socialnetworks?: string[];
   month?: string;
   year?: string;
+  time?: string;
 }
 
 const ClientAgenda = () => {
@@ -64,19 +64,16 @@ const ClientAgenda = () => {
   const [editingPost, setEditingPost] = useState<CalendarPost | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Load client data
   useEffect(() => {
     if (!clientId) return;
     
     const loadClient = async () => {
       try {
-        // First try to find client in settings context
         const contextClient = settings.clients.find(c => c.id === clientId);
         
         if (contextClient) {
           setClient(contextClient);
         } else {
-          // If not found in context, try to fetch from Supabase
           const supabaseClient = await fetchClientById(clientId);
           if (supabaseClient) {
             setClient(supabaseClient as Client);
@@ -94,7 +91,6 @@ const ClientAgenda = () => {
     loadClient();
   }, [clientId, settings.clients, navigate]);
   
-  // Load posts for this client from Supabase
   useEffect(() => {
     if (!clientId) return;
     
@@ -114,7 +110,6 @@ const ClientAgenda = () => {
     loadPosts();
   }, [clientId]);
   
-  // Animation delay for posts display
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisiblePosts(posts);
@@ -123,7 +118,6 @@ const ClientAgenda = () => {
     return () => clearTimeout(timer);
   }, [posts]);
   
-  // Filter posts by month
   useEffect(() => {
     if (posts.length > 0) {
       if (filterMonth === 'all') {
@@ -147,15 +141,34 @@ const ClientAgenda = () => {
     });
   };
   
-  const handleAddPost = async (newPostData: Omit<CalendarPost, 'id'>) => {
+  const handleAddPost = async (newPostData: {
+    date: string;
+    day: string;
+    dayOfWeek: string;
+    title: string;
+    type: string;
+    postType: string;
+    text: string;
+    observation?: string;
+    socialNetworks?: string[];
+    time?: string;
+  }) => {
     if (!clientId) return;
     
     try {
       if (editingPost) {
-        // Update existing post
-        const updatedPost = {
+        const updatedPost: CalendarPost = {
           ...editingPost,
-          ...newPostData,
+          date: newPostData.date,
+          day: newPostData.day,
+          dayofweek: newPostData.dayOfWeek,
+          title: newPostData.title,
+          type: newPostData.type,
+          posttype: newPostData.postType,
+          text: newPostData.text,
+          notes: newPostData.observation || '',
+          socialnetworks: newPostData.socialNetworks || [],
+          time: newPostData.time
         };
         
         const savedPost = await savePost(updatedPost);
@@ -176,12 +189,19 @@ const ClientAgenda = () => {
           toast.error("Erro ao atualizar postagem");
         }
       } else {
-        // Create new post
-        const newPost = {
-          ...newPostData,
+        const newPost: Omit<CalendarPost, 'id'> = {
+          date: newPostData.date,
+          day: newPostData.day,
+          dayofweek: newPostData.dayOfWeek,
+          title: newPostData.title,
+          type: newPostData.type,
+          posttype: newPostData.postType,
+          text: newPostData.text,
           completed: false,
-          notes: '',
-          clientid: clientId
+          notes: newPostData.observation || '',
+          clientid: clientId,
+          socialnetworks: newPostData.socialNetworks || [],
+          time: newPostData.time
         };
         
         const savedPost = await savePost(newPost);
@@ -282,7 +302,6 @@ const ClientAgenda = () => {
         uploadedImageUrls.push(fileUrl);
       }
       
-      // Find the post to update
       const postToUpdate = posts.find(p => p.id === postId);
       
       if (postToUpdate) {
@@ -317,7 +336,6 @@ const ClientAgenda = () => {
   };
   
   const handleToggleStatus = async (postId: number) => {
-    // Find the post to update
     const postToUpdate = posts.find(p => p.id === postId);
     
     if (postToUpdate) {
@@ -369,15 +387,15 @@ const ClientAgenda = () => {
   return (
     <div 
       className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
-      style={{ backgroundImage: `linear-gradient(to bottom right, ${client.themeColor}10, white)` }}
+      style={{ backgroundImage: `linear-gradient(to bottom right, ${client?.themeColor}10, white)` }}
     >
       <div 
         className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
-        style={{ backgroundColor: `${client.themeColor}20` }}
+        style={{ backgroundColor: `${client?.themeColor}20` }}
       />
       <div 
         className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
-        style={{ backgroundColor: `${client.themeColor}20` }}
+        style={{ backgroundColor: `${client?.themeColor}20` }}
       />
       
       <div className="max-w-5xl mx-auto px-4 py-16">
@@ -404,9 +422,9 @@ const ClientAgenda = () => {
           
           <div className="flex justify-between items-center mb-8">
             <Header 
-              title={client.name} 
+              title={client?.name} 
               subtitle="Agenda de Postagens" 
-              themeColor={client.themeColor}
+              themeColor={client?.themeColor}
               showSettings={false}
             />
             <div className="flex space-x-2">
@@ -416,7 +434,7 @@ const ClientAgenda = () => {
                   setAddPostOpen(true);
                 }}
                 className="text-white flex items-center gap-2"
-                style={{ backgroundColor: client.themeColor }}
+                style={{ backgroundColor: client?.themeColor }}
               >
                 <Plus className="w-4 h-4" />
                 Nova Postagem
@@ -441,18 +459,18 @@ const ClientAgenda = () => {
               >
                 <CalendarEntry
                   date={post.date}
-                  day={post.dayOfWeek}
+                  day={post.dayofweek}
                   title={post.title}
-                  type={post.postType}
+                  type={post.posttype}
                   text={post.text}
                   highlighted={true}
-                  themeColor={client.themeColor}
+                  themeColor={client?.themeColor}
                   completed={post.completed}
                   onSelect={() => handleViewPostDetail(post.id)}
                   onUpload={(e) => handleFileUpload(post.id, e)}
                   onStatusChange={() => handleToggleStatus(post.id)}
                   isUploading={isUploading === post.id}
-                  socialNetworks={post.socialNetworks || []}
+                  socialNetworks={post.socialnetworks || []}
                 />
               </div>
             ))}
@@ -462,7 +480,7 @@ const ClientAgenda = () => {
             <div className="flex justify-between items-center mb-8">
               <h2 
                 className="text-2xl font-bold"
-                style={{ color: client.themeColor }}
+                style={{ color: client?.themeColor }}
               >
                 Todas as Postagens
               </h2>
@@ -474,7 +492,7 @@ const ClientAgenda = () => {
                 >
                   <SelectTrigger 
                     className="w-[140px] focus:ring-0 focus:ring-offset-0"
-                    style={{ borderColor: `${client.themeColor}40` }}
+                    style={{ borderColor: `${client?.themeColor}40` }}
                   >
                     <SelectValue placeholder="Selecione o mês" />
                   </SelectTrigger>
@@ -503,7 +521,7 @@ const ClientAgenda = () => {
                   <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
                     <Calendar 
                       className="w-5 h-5 mr-2"
-                      style={{ color: client.themeColor }} 
+                      style={{ color: client?.themeColor }} 
                     />
                     Calendário de Postagens
                   </h3>
@@ -519,9 +537,9 @@ const ClientAgenda = () => {
                         }}
                         modifiersStyles={{
                           booked: {
-                            backgroundColor: `${client.themeColor}20`,
+                            backgroundColor: `${client?.themeColor}20`,
                             borderRadius: '50%',
-                            color: client.themeColor,
+                            color: client?.themeColor,
                             fontWeight: 'bold'
                           }
                         }}
@@ -537,7 +555,7 @@ const ClientAgenda = () => {
                     <h3 className="text-lg font-semibold text-gray-800 flex items-center">
                       <Filter 
                         className="w-5 h-5 mr-2"
-                        style={{ color: client.themeColor }} 
+                        style={{ color: client?.themeColor }} 
                       />
                       Lista de Postagens
                     </h3>
@@ -560,13 +578,13 @@ const ClientAgenda = () => {
                             <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50">
                               <TableCell className="font-medium" onClick={() => handleViewPostDetail(post.id)}>
                                 <div className="text-white text-xs font-medium py-1 px-2 rounded-full inline-flex"
-                                  style={{ backgroundColor: client.themeColor }}
+                                  style={{ backgroundColor: client?.themeColor }}
                                 >
                                   {post.date}
                                 </div>
                               </TableCell>
                               <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.title}</TableCell>
-                              <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.postType}</TableCell>
+                              <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.posttype}</TableCell>
                               <TableCell onClick={() => handleViewPostDetail(post.id)}>
                                 {post.completed ? (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -584,7 +602,7 @@ const ClientAgenda = () => {
                                     variant="ghost" 
                                     size="sm"
                                     className="hover:bg-gray-100"
-                                    style={{ color: client.themeColor }}
+                                    style={{ color: client?.themeColor }}
                                     onClick={() => handleEditPost(post)}
                                   >
                                     Editar
@@ -593,7 +611,7 @@ const ClientAgenda = () => {
                                     variant="ghost" 
                                     size="sm"
                                     className="hover:bg-gray-100"
-                                    style={{ color: client.themeColor }}
+                                    style={{ color: client?.themeColor }}
                                     onClick={() => handleViewPostDetail(post.id)}
                                   >
                                     Ver
@@ -638,7 +656,16 @@ const ClientAgenda = () => {
         }}
         onSave={handleAddPost}
         initialDate={calendarSelectedDate}
-        initialPost={editingPost}
+        initialPost={editingPost ? {
+          date: editingPost.date,
+          title: editingPost.title,
+          type: editingPost.type,
+          text: editingPost.text,
+          observation: editingPost.notes,
+          socialNetworks: editingPost.socialnetworks,
+          time: editingPost.time,
+          postType: editingPost.posttype
+        } : null}
       />
       
       <DeleteConfirmDialog
