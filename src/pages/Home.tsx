@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Settings, Calendar, ChevronLeft, LogOut, Users, BarChart } from 'lucide-react';
+import { Plus, Settings, Calendar, ChevronLeft, LogOut, Users, BarChart, PieChart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -18,7 +18,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import ClientCard from '@/components/ClientCard';
 import ClientTable from '@/components/ClientTable';
 import SettingsModal from '@/components/SettingsModal';
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { 
+  BarChart as RechartsBarChart, 
+  Bar, XAxis, YAxis, 
+  CartesianGrid, Tooltip, 
+  ResponsiveContainer, 
+  PieChart as RechartsPieChart, 
+  Pie, Cell 
+} from 'recharts';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -118,6 +125,9 @@ const Home = () => {
   // Sort chart data by post count (descending)
   chartData.sort((a, b) => b.posts - a.posts);
 
+  // Generate COLORS array using client theme colors
+  const COLORS = chartData.map(item => item.color);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -187,43 +197,6 @@ const Home = () => {
         </Card>
       </div>
 
-      {/* Client Engagement Chart */}
-      {chartData.length > 0 && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Ranking de Engajamento</CardTitle>
-            <CardDescription>Quantidade de posts por cliente</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsBarChart 
-                  data={chartData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="name" 
-                    angle={-45} 
-                    textAnchor="end" 
-                    height={70}
-                  />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar 
-                    dataKey="posts" 
-                    name="Posts" 
-                    fill="#8884d8" 
-                    radius={[4, 4, 0, 0]}
-                    isAnimationActive={true}
-                  />
-                </RechartsBarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Clientes</h2>
         <div className="flex items-center space-x-3">
@@ -275,6 +248,47 @@ const Home = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Ranking Chart (moved below clients section) */}
+      {chartData.length > 0 && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Ranking de Engajamento</CardTitle>
+            <CardDescription>Quantidade de posts por cliente</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsBarChart 
+                  data={chartData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={50}
+                    fontSize={11}
+                  />
+                  <YAxis fontSize={11} />
+                  <Tooltip />
+                  <Bar 
+                    dataKey="posts" 
+                    name="Posts" 
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={true}
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Add Client Modal */}
