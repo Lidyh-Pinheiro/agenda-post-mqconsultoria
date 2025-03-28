@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { Plus, Settings, Calendar, ChevronLeft, LogOut } from 'lucide-react';
+import { Plus, Settings, Calendar, ChevronLeft, LogOut, Users, BarChart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -13,9 +14,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/contexts/SettingsContext';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import ClientCard from '@/components/ClientCard';
 import ClientTable from '@/components/ClientTable';
 import SettingsModal from '@/components/SettingsModal';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -99,6 +102,22 @@ const Home = () => {
     navigate('/login');
   };
 
+  // Get active clients count
+  const activeClientsCount = clients?.filter(client => client.active !== false).length || 0;
+  
+  // Get total posts count across all clients
+  const totalPostsCount = clients?.reduce((sum, client) => sum + (client.postsCount || 0), 0) || 0;
+  
+  // Prepare data for client engagement chart
+  const chartData = clients?.map(client => ({
+    name: client.name.length > 10 ? client.name.substring(0, 10) + '...' : client.name,
+    posts: client.postsCount || 0,
+    color: client.themeColor
+  })) || [];
+  
+  // Sort chart data by post count (descending)
+  chartData.sort((a, b) => b.posts - a.posts);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -124,6 +143,87 @@ const Home = () => {
         </div>
       </div>
 
+      {/* Dashboard Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeClientsCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Total de clientes gerenciados
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Agendas Ativas</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalPostsCount}</div>
+            <p className="text-xs text-muted-foreground">
+              Total de posts agendados
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Média de Posts</CardTitle>
+            <BarChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {clients && clients.length > 0 
+                ? (totalPostsCount / clients.length).toFixed(1) 
+                : "0"}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Posts por cliente
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Client Engagement Chart */}
+      {chartData.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Ranking de Engajamento</CardTitle>
+            <CardDescription>Quantidade de posts por cliente</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsBarChart 
+                  data={chartData}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end" 
+                    height={70}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar 
+                    dataKey="posts" 
+                    name="Posts" 
+                    fill="#8884d8" 
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={true}
+                  />
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">Clientes</h2>
         <div className="flex items-center space-x-3">
@@ -136,7 +236,7 @@ const Home = () => {
             {isTableView ? "Visualização em Card" : "Visualização em Tabela"}
           </Button>
           <Button 
-            variant="primary"
+            variant="default"
             onClick={() => setOpenAddClientModal(true)}
             className="rounded-[10px]"
           >
