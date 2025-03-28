@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Home from "./pages/Home";
+import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ClientAgenda from "./pages/ClientAgenda";
 import ClientPostDetail from "./pages/ClientPostDetail";
@@ -76,6 +77,14 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <Home />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/index" 
+                element={
+                  <ProtectedRoute>
+                    <Index />
                   </ProtectedRoute>
                 } 
               />
