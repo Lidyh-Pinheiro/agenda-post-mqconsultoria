@@ -71,12 +71,32 @@ const ClientView = () => {
           };
           setClient(mappedClient);
           console.log('Mapped client data:', mappedClient);
-        } else {
+        } else if (clientError) {
+          console.log('Error fetching client from Supabase, checking local settings');
           // Fallback to local storage data
           const foundClient = settings.clients.find(c => c.id === clientId);
           if (foundClient) {
             setClient(foundClient);
             console.log('Found client in local settings:', foundClient);
+            
+            // Try to save this client to Supabase for future reference
+            try {
+              const { error: insertError } = await supabase.from('clients').insert({
+                id: foundClient.id,
+                name: foundClient.name,
+                themecolor: foundClient.themeColor,
+                password: foundClient.password,
+                description: foundClient.description
+              });
+              
+              if (insertError) {
+                console.error('Error syncing local client to Supabase:', insertError);
+              } else {
+                console.log('Successfully synced local client to Supabase');
+              }
+            } catch (syncError) {
+              console.error('Exception when syncing local client to Supabase:', syncError);
+            }
           } else {
             console.log('Client not found in either Supabase or local settings');
           }
@@ -86,7 +106,7 @@ const ClientView = () => {
         const storedAuth = localStorage.getItem(`client_auth_${clientId}`);
         if (storedAuth) {
           setAuthenticated(true);
-          loadClientPosts(clientId);
+          await loadClientPosts(clientId);
         }
       } catch (error) {
         console.error('Error loading client:', error);
@@ -139,6 +159,7 @@ const ClientView = () => {
         setPosts(sortPostsByDate(mappedPosts));
         console.log('Mapped posts from Supabase:', mappedPosts);
       } else {
+        console.log('No posts found in Supabase or error occurred, checking localStorage');
         // Fallback to local storage data
         const storedPosts = localStorage.getItem('calendarPosts');
         if (storedPosts) {
@@ -146,6 +167,42 @@ const ClientView = () => {
           const clientPosts = parsedPosts.filter((post: CalendarPost) => post.clientId === clientId);
           setPosts(sortPostsByDate(clientPosts));
           console.log('Loaded posts from localStorage:', clientPosts);
+          
+          // Try to sync these posts to Supabase for future reference
+          if (clientPosts.length > 0) {
+            try {
+              console.log('Syncing local posts to Supabase...');
+              // Map local posts to Supabase format
+              const supabasePosts = clientPosts.map((post: CalendarPost) => ({
+                date: post.date,
+                day: post.day,
+                dayofweek: post.dayOfWeek,
+                title: post.title,
+                type: post.type,
+                posttype: post.postType,
+                text: post.text,
+                completed: post.completed || false,
+                notes: post.notes || '',
+                images: post.images || [],
+                clientid: post.clientId,
+                socialnetworks: post.socialNetworks || [],
+                time: post.time || ''
+              }));
+              
+              // Using upsert to avoid duplicates
+              for (const post of supabasePosts) {
+                const { error } = await supabase.from('posts').upsert(post);
+                if (error) {
+                  console.error('Error syncing post to Supabase:', error);
+                }
+              }
+              console.log('Posts sync completed');
+            } catch (syncError) {
+              console.error('Exception when syncing posts to Supabase:', syncError);
+            }
+          }
+        } else {
+          console.log('No posts found in localStorage either');
         }
       }
     } catch (error) {
@@ -180,7 +237,7 @@ const ClientView = () => {
       if (isValid) {
         setAuthenticated(true);
         localStorage.setItem(`client_auth_${clientId}`, 'true');
-        loadClientPosts(clientId);
+        await loadClientPosts(clientId);
         setError('');
         toast.success("Acesso autorizado!");
       } else {

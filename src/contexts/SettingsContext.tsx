@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,7 +77,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setSettings(JSON.parse(storedSettings));
     }
     
-    // Load clients from Supabase on initial load
     loadClientsFromSupabase();
   }, []);
 
@@ -88,15 +86,18 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   const loadClientsFromSupabase = async () => {
     try {
+      console.log('Fetching clients from Supabase...');
       const { data, error } = await supabase.from('clients').select('*');
       
       if (error) {
         console.error('Error loading clients from Supabase:', error);
+        toast.error('Erro ao carregar clientes do banco de dados');
         return;
       }
       
+      console.log('Supabase returned clients:', data);
+      
       if (data && data.length > 0) {
-        // Map Supabase clients to our Client type
         const mappedClients: Client[] = data.map(client => ({
           id: client.id,
           name: client.name,
@@ -107,13 +108,18 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           active: true
         }));
         
+        console.log('Mapped clients:', mappedClients);
+        
         setSettings(prev => ({
           ...prev,
           clients: mappedClients
         }));
+      } else {
+        console.log('No clients found in Supabase, using default');
       }
     } catch (error) {
       console.error('Error loading clients:', error);
+      toast.error('Erro ao carregar clientes do banco de dados');
     }
   };
 
@@ -149,7 +155,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       active: true,
     };
     
-    // Save to Supabase
     saveClientToSupabase(newClient);
 
     setSettings(prev => ({
@@ -163,6 +168,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   const saveClientToSupabase = async (client: Client) => {
     try {
+      console.log('Saving client to Supabase:', client);
       const { error } = await supabase.from('clients').insert({
         id: client.id,
         name: client.name,
@@ -174,9 +180,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       if (error) {
         console.error('Error saving client to Supabase:', error);
         toast.error("Erro ao salvar cliente no banco de dados");
+      } else {
+        toast.success("Cliente salvo com sucesso no banco de dados");
       }
     } catch (error) {
       console.error('Error saving client:', error);
+      toast.error("Erro ao salvar cliente no banco de dados");
     }
   };
 
@@ -197,7 +206,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       description: client.description || '',
     };
     
-    // Save to Supabase
     saveClientToSupabase(newClient);
 
     setSettings(prev => ({
@@ -218,7 +226,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...(password ? { password } : {})
     };
     
-    // Update in Supabase
     updateClientInSupabase(id, {
       name,
       themecolor: themeColor,
@@ -259,7 +266,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return false;
     }
     
-    // Delete from Supabase
     deleteClientFromSupabase(id);
     
     setSettings(prev => {
@@ -328,7 +334,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateClientPassword = (clientId: string, password: string) => {
     if (!password.trim()) return; // Don't update if password is empty
     
-    // Update the password in Supabase
     updateClientInSupabase(clientId, { password });
     
     setSettings(prev => ({
@@ -344,7 +349,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   const verifyClientPassword = async (clientId: string, password: string): Promise<boolean> => {
     try {
-      // First try to verify against Supabase
+      console.log('Verifying password for client:', clientId);
       const { data, error } = await supabase
         .from('clients')
         .select('password')
@@ -353,21 +358,21 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       if (error) {
         console.error('Error verifying password in Supabase:', error);
-        // Fall back to local verification if Supabase fails
         const client = settings.clients.find(c => c.id === clientId);
+        console.log('Falling back to local verification with client:', client);
         return client?.password === password;
       }
       
       if (data) {
+        console.log('Supabase returned password data:', data);
         return data.password === password;
       }
       
-      // If no data from Supabase, fall back to local verification
       const client = settings.clients.find(c => c.id === clientId);
+      console.log('No data from Supabase, falling back to local verification with client:', client);
       return client?.password === password;
     } catch (error) {
       console.error('Error verifying client password:', error);
-      // Fall back to local verification on error
       const client = settings.clients.find(c => c.id === clientId);
       return client?.password === password;
     }

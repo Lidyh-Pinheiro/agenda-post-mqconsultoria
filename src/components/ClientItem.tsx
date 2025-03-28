@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Users, Share2, Link } from 'lucide-react';
 import { Client } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ClientItemProps {
   client: Client;
@@ -20,15 +21,52 @@ const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect, onShare }) =>
   };
 
   // Copy client view URL to clipboard
-  const copyClientUrlToClipboard = (e: React.MouseEvent) => {
+  const copyClientUrlToClipboard = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = generateClientViewUrl();
-    navigator.clipboard.writeText(url);
     
-    // Use toast instead of alert for better UX
-    toast.success("URL copiada!", {
-      description: "Link de acesso do cliente copiado para a área de transferência."
-    });
+    try {
+      // Check if client exists in Supabase
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('id', client.id)
+        .single();
+      
+      if (error || !data) {
+        console.log('Client not found in Supabase, attempting to sync:', client);
+        // Client doesn't exist in Supabase, sync it now
+        const { error: insertError } = await supabase.from('clients').insert({
+          id: client.id,
+          name: client.name,
+          themecolor: client.themeColor,
+          password: client.password,
+          description: client.description
+        });
+        
+        if (insertError) {
+          console.error('Error syncing client to Supabase:', insertError);
+        } else {
+          console.log('Successfully synced client to Supabase');
+        }
+      }
+      
+      const url = generateClientViewUrl();
+      navigator.clipboard.writeText(url);
+      
+      // Use toast instead of alert for better UX
+      toast.success("URL copiada!", {
+        description: "Link de acesso do cliente copiado para a área de transferência."
+      });
+    } catch (error) {
+      console.error('Error checking/syncing client:', error);
+      // Copy URL anyway even if there was an error
+      const url = generateClientViewUrl();
+      navigator.clipboard.writeText(url);
+      
+      toast.success("URL copiada!", {
+        description: "Link de acesso do cliente copiado para a área de transferência."
+      });
+    }
   };
 
   return (
