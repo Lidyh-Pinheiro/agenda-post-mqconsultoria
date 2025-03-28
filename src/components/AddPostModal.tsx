@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -79,6 +78,8 @@ const POST_TYPES = [
   { value: 'Reels', label: 'Reels' },
   { value: 'Card', label: 'Card' },
   { value: 'Reflexão', label: 'Reflexão' },
+  { value: 'Legenda explicativa', label: 'Legenda explicativa' },
+  { value: 'Texto', label: 'Texto' },
 ];
 
 const SOCIAL_NETWORKS = [
@@ -292,10 +293,11 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
                       htmlFor={`checkbox-${network.id}`}
                       className="flex items-center cursor-pointer"
                     >
-                      {typeof network.icon === 'function' 
-                        ? <network.icon className="h-4 w-4 mr-1" />
-                        : <network.icon className="h-4 w-4 mr-1" />
-                      }
+                      {React.isValidElement(network.icon) ? (
+                        network.icon
+                      ) : typeof network.icon === 'function' ? (
+                        <network.icon className="h-4 w-4 mr-1" />
+                      ) : null}
                       <span>{network.label}</span>
                     </Label>
                   </div>
