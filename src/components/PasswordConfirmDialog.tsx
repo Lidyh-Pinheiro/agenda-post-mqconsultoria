@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 interface PasswordConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
+  onConfirm: (password?: string) => void;
   passwordValue: string;
   setPasswordValue: React.Dispatch<React.SetStateAction<string>>;
   title: string;
@@ -51,7 +51,7 @@ const PasswordConfirmDialog: React.FC<PasswordConfirmDialogProps> = ({
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>Confirmar</AlertDialogAction>
+          <AlertDialogAction onClick={() => onConfirm(passwordValue)}>Confirmar</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

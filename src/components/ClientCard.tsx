@@ -59,7 +59,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onSha
         
         <div className="flex justify-between mb-4">
           <div>
-            <h3 className="text-xl font-semibold mb-2">{client?.name || 'Client'}</h3>
+            <h3 className="text-xl font-semibold mb-2">{client?.name || 'Cliente'}</h3>
             
             <div className="flex items-center text-gray-500 text-sm">
               <Calendar className="w-4 h-4 mr-1" />
