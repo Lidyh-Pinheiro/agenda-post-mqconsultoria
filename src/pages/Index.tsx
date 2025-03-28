@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSettings } from '@/contexts/SettingsContext';
 import SettingsModal from '@/components/SettingsModal';
-import { format } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
   Table, 
@@ -39,6 +39,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface CalendarPost {
   id: number;
@@ -237,14 +238,19 @@ const Index = () => {
   const paginatedPosts = filteredPosts.slice((page - 1) * postsPerPage, page * postsPerPage);
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
 
-  const getPostDates = () => {
-    return posts.map(post => {
-      const [day, month] = post.date.split('/');
-      const year = new Date().getFullYear();
-      return new Date(year, parseInt(month) - 1, parseInt(day));
-    });
+  const parsePostDate = (dateStr: string) => {
+    const [day, month] = dateStr.split('/');
+    const year = new Date().getFullYear();
+    return new Date(year, parseInt(month) - 1, parseInt(day));
   };
   
+  const isDateWithPosts = (date: Date) => {
+    return filteredPosts.some(post => {
+      const postDate = parsePostDate(post.date);
+      return isSameDay(postDate, date);
+    });
+  };
+
   const handleSelectPost = (post: CalendarPost) => {
     const currentPost = posts.find(p => p.id === post.id) || post;
     setSelectedPost(currentPost);
@@ -554,9 +560,23 @@ const Index = () => {
                       </h3>
                       <div className="bg-white rounded-lg shadow-sm p-1">
                         <div className="calendar-container">
-                          <div className="text-center py-4 text-gray-500">
-                            Calendário com datas marcadas
-                          </div>
+                          <CalendarComponent
+                            mode="default"
+                            className="p-3 pointer-events-auto"
+                            selected={selectedDate}
+                            onSelect={setSelectedDate}
+                            modifiers={{
+                              booked: (date) => isDateWithPosts(date)
+                            }}
+                            modifiersStyles={{
+                              booked: {
+                                backgroundColor: `${themeColor}20`,
+                                borderRadius: '50%',
+                                color: themeColor,
+                                fontWeight: 'bold'
+                              }
+                            }}
+                          />
                         </div>
                       </div>
                     </Card>
