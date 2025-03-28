@@ -1,47 +1,25 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { ArrowLeft, Calendar, Filter, Plus, Trash2, Share } from 'lucide-react';
+import { ArrowLeft, Plus, Share } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
-import CalendarEntry from '@/components/CalendarEntry';
 import { Card } from '@/components/ui/card';
-import { toast } from 'sonner';
+import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { supabase } from '@/integrations/supabase/client';
 import { firebaseDB } from '@/integrations/firebase/client';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/components/ui/table';
-import { format, isSameDay, parse } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { format } from 'date-fns';
 import AddPostModal from '@/components/AddPostModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import ShareModal from '@/components/ShareModal';
-
-interface CalendarPost {
-  id: number;
-  date: string;
-  day: string;
-  dayOfWeek: string;
-  title: string;
-  type: string;
-  postType: string;
-  text: string;
-  completed?: boolean;
-  notes?: string;
-  images?: string[];
-  clientId?: string;
-  socialNetworks?: string[];
-  time?: string;
-}
+import { CalendarPost } from '@/types/calendar';
+import { loadClientPosts, savePosts, deletePost } from '@/services/postService';
+import PostGrid from '@/components/PostGrid';
+import PostCalendar from '@/components/PostCalendar';
+import PostTable from '@/components/PostTable';
 
 const ClientAgenda = () => {
   const { clientId } = useParams<{ clientId: string }>();
@@ -75,36 +53,26 @@ const ClientAgenda = () => {
   }, [clientId, settings.clients, navigate]);
   
   useEffect(() => {
-    const loadPosts = async () => {
+    const fetchPosts = async () => {
+      if (!clientId) return;
+      
       try {
         setLoading(true);
-        const allPosts = await firebaseDB.getPosts();
-        if (allPosts) {
-          const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-          setPosts(sortPostsByDate(clientPosts));
-        } else {
-          setPosts([]);
-        }
+        const clientPosts = await loadClientPosts(clientId);
+        setPosts(clientPosts);
       } catch (error) {
         console.error("Error loading posts:", error);
-        
-        const storedPosts = localStorage.getItem('calendarPosts');
-        if (storedPosts) {
-          const allPosts = JSON.parse(storedPosts);
-          const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-          setPosts(sortPostsByDate(clientPosts));
-        }
       } finally {
         setLoading(false);
       }
     };
     
-    loadPosts();
+    fetchPosts();
     
     const unsubscribe = firebaseDB.subscribeToPosts((allPosts) => {
-      if (allPosts) {
+      if (allPosts && clientId) {
         const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-        setPosts(sortPostsByDate(clientPosts));
+        setPosts(clientPosts);
       }
     });
     
@@ -113,24 +81,7 @@ const ClientAgenda = () => {
   
   useEffect(() => {
     if (posts.length > 0 || postToDelete !== null) {
-      const savePosts = async () => {
-        try {
-          const allPosts = await firebaseDB.getPosts() || [];
-          
-          const otherPosts = allPosts.filter((p: CalendarPost) => 
-            p.clientId !== clientId || 
-            (postToDelete !== null && p.id === postToDelete)
-          );
-          
-          await firebaseDB.setPosts([...otherPosts, ...posts]);
-          
-          localStorage.setItem('calendarPosts', JSON.stringify([...otherPosts, ...posts]));
-        } catch (error) {
-          console.error("Error saving posts:", error);
-        }
-      };
-      
-      savePosts();
+      savePosts(posts, clientId as string, postToDelete);
     }
   }, [posts, clientId, postToDelete]);
   
@@ -156,15 +107,6 @@ const ClientAgenda = () => {
     }
   }, [filterMonth, posts]);
   
-  const sortPostsByDate = (postsToSort: CalendarPost[]): CalendarPost[] => {
-    return [...postsToSort].sort((a, b) => {
-      const dateA = parse(a.date, 'dd/MM', new Date());
-      const dateB = parse(b.date, 'dd/MM', new Date());
-      
-      return dateA.getTime() - dateB.getTime();
-    });
-  };
-  
   const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
     if (editingPost) {
       const updatedPosts = posts.map(post => 
@@ -173,12 +115,10 @@ const ClientAgenda = () => {
           : post
       );
       
-      setPosts(sortPostsByDate(updatedPosts));
+      setPosts(updatedPosts);
       setEditingPost(null);
       
-      toast.success("Postagem atualizada com sucesso!", {
-        description: `${newPostData.date} - ${newPostData.title}`,
-      });
+      toast.success("Postagem atualizada com sucesso!");
     } else {
       const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
       const newPost: CalendarPost = {
@@ -189,11 +129,9 @@ const ClientAgenda = () => {
         clientId: clientId
       };
       
-      setPosts(sortPostsByDate([...posts, newPost]));
+      setPosts([...posts, newPost]);
       
-      toast.success("Postagem adicionada com sucesso!", {
-        description: `${newPost.date} - ${newPost.title}`,
-      });
+      toast.success("Postagem adicionada com sucesso!");
     }
   };
   
@@ -208,19 +146,13 @@ const ClientAgenda = () => {
     setPosts(prev => prev.filter(post => post.id !== postToDelete));
     
     try {
-      const allPosts = await firebaseDB.getPosts() || [];
-      const updatedPosts = allPosts.filter((p: CalendarPost) => p.id !== postToDelete);
-      await firebaseDB.setPosts(updatedPosts);
-      
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+      await deletePost(postToDelete);
     } catch (error) {
       console.error("Error deleting post:", error);
     }
     
     setDeleteDialogOpen(false);
     setPostToDelete(null);
-    
-    toast.success("Postagem removida com sucesso!");
   };
   
   const handleCalendarDateSelect = (date: Date | undefined) => {
@@ -242,19 +174,6 @@ const ClientAgenda = () => {
   const handleEditPost = (post: CalendarPost) => {
     setEditingPost(post);
     setAddPostOpen(true);
-  };
-  
-  const parsePostDate = (dateStr: string) => {
-    const [day, month] = dateStr.split('/');
-    const year = new Date().getFullYear();
-    return new Date(year, parseInt(month) - 1, parseInt(day));
-  };
-  
-  const isDateWithPosts = (date: Date) => {
-    return filteredPosts.some(post => {
-      const postDate = parsePostDate(post.date);
-      return isSameDay(postDate, date);
-    });
   };
   
   const handleFileUpload = async (postId: number, event: React.ChangeEvent<HTMLInputElement>) => {
@@ -294,15 +213,10 @@ const ClientAgenda = () => {
         return post;
       }));
       
-      toast.success("Arquivo(s) adicionado(s) com sucesso!", {
-        duration: 2000,
-      });
+      toast.success("Arquivo(s) adicionado(s) com sucesso!");
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error("Erro ao fazer upload do arquivo.", {
-        description: "Tente novamente mais tarde.",
-        duration: 3000,
-      });
+      toast.error("Erro ao fazer upload do arquivo.");
     } finally {
       setIsUploading(null);
     }
@@ -317,9 +231,7 @@ const ClientAgenda = () => {
       return post;
     }));
     
-    toast.success("Status da postagem atualizado!", {
-      duration: 2000,
-    });
+    toast.success("Status da postagem atualizado!");
   };
   
   if (!client || loading) {
@@ -390,31 +302,14 @@ const ClientAgenda = () => {
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            {visiblePosts.map((post, index) => (
-              <div 
-                key={post.id}
-                className="animate-scale-in"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <CalendarEntry
-                  date={post.date + (post.time ? ` ${post.time}` : '')}
-                  day={post.dayOfWeek}
-                  title={post.title}
-                  type={post.postType}
-                  text={post.text}
-                  highlighted={true}
-                  themeColor={client.themeColor}
-                  completed={post.completed}
-                  onSelect={() => handleViewPostDetail(post.id)}
-                  onUpload={(e) => handleFileUpload(post.id, e)}
-                  onStatusChange={() => handleToggleStatus(post.id)}
-                  isUploading={isUploading === post.id}
-                  socialNetworks={post.socialNetworks || []}
-                />
-              </div>
-            ))}
-          </div>
+          <PostGrid 
+            posts={visiblePosts}
+            themeColor={client.themeColor}
+            onViewPost={handleViewPostDetail}
+            onUpload={handleFileUpload}
+            onStatusChange={handleToggleStatus}
+            isUploading={isUploading}
+          />
           
           <div className="mt-20">
             <div className="flex justify-between items-center mb-8">
@@ -457,131 +352,22 @@ const ClientAgenda = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-1">
-                <Card className="p-4 shadow-md bg-white">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                    <Calendar 
-                      className="w-5 h-5 mr-2"
-                      style={{ color: client.themeColor }} 
-                    />
-                    Calendário de Postagens
-                  </h3>
-                  <div className="bg-white rounded-lg shadow-sm p-1">
-                    <div className="calendar-container">
-                      <CalendarComponent
-                        mode="single"
-                        className="p-3 pointer-events-auto"
-                        selected={selectedDate}
-                        onSelect={handleCalendarDateSelect}
-                        modifiers={{
-                          booked: (date) => isDateWithPosts(date)
-                        }}
-                        modifiersStyles={{
-                          booked: {
-                            backgroundColor: `${client.themeColor}20`,
-                            borderRadius: '50%',
-                            color: client.themeColor,
-                            fontWeight: 'bold'
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                </Card>
+                <PostCalendar 
+                  themeColor={client.themeColor}
+                  selectedDate={selectedDate}
+                  onDateSelect={handleCalendarDateSelect}
+                  filteredPosts={filteredPosts}
+                />
               </div>
 
               <div className="lg:col-span-2">
-                <Card className="p-6 shadow-md bg-white">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                      <Filter 
-                        className="w-5 h-5 mr-2"
-                        style={{ color: client.themeColor }} 
-                      />
-                      Lista de Postagens
-                    </h3>
-                  </div>
-
-                  <div className="overflow-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[100px]">Data</TableHead>
-                          <TableHead>Título</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead className="w-[100px]">Status</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredPosts.length > 0 ? (
-                          filteredPosts.map((post) => (
-                            <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50">
-                              <TableCell className="font-medium" onClick={() => handleViewPostDetail(post.id)}>
-                                <div className="text-white text-xs font-medium py-1 px-2 rounded-full inline-flex"
-                                  style={{ backgroundColor: client.themeColor }}
-                                >
-                                  {post.date}
-                                </div>
-                              </TableCell>
-                              <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.title}</TableCell>
-                              <TableCell onClick={() => handleViewPostDetail(post.id)}>{post.postType}</TableCell>
-                              <TableCell onClick={() => handleViewPostDetail(post.id)}>
-                                {post.completed ? (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Concluído
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    Pendente
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end items-center space-x-2">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    className="hover:bg-gray-100"
-                                    style={{ color: client.themeColor }}
-                                    onClick={() => handleEditPost(post)}
-                                  >
-                                    Editar
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    className="hover:bg-gray-100"
-                                    style={{ color: client.themeColor }}
-                                    onClick={() => handleViewPostDetail(post.id)}
-                                  >
-                                    Ver
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="hover:bg-red-100 text-red-600"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openDeleteConfirmation(post.id);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-4 text-gray-500">
-                              Nenhuma postagem encontrada para este mês.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </Card>
+                <PostTable 
+                  themeColor={client.themeColor}
+                  filteredPosts={filteredPosts}
+                  onViewPost={handleViewPostDetail}
+                  onEditPost={handleEditPost}
+                  onDeletePost={openDeleteConfirmation}
+                />
               </div>
             </div>
           </div>
