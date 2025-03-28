@@ -108,9 +108,9 @@ const SharedClientAgenda = () => {
         </div>
         
         {posts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr print:grid-cols-1 print:gap-8">
             {posts.map((post) => (
-              <div key={post.id} className="flex">
+              <div key={post.id} className="flex print:page-break-inside-avoid">
                 <CalendarEntry
                   date={post.date}
                   day={post.dayOfWeek}
@@ -123,6 +123,7 @@ const SharedClientAgenda = () => {
                   socialNetworks={post.socialNetworks}
                   preview={true}
                   hideIcons={false}
+                  className="print:break-inside-avoid print:shadow-none"
                 />
               </div>
             ))}

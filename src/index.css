@@ -131,3 +131,46 @@
 .scroll-container::-webkit-scrollbar {
   display: none;
 }
+
+/* Print-specific styles */
+@media print {
+  body {
+    font-family: 'Inter', sans-serif;
+    color: #000;
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .calendar-entry {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 1.5rem;
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    transform: none !important;
+  }
+  
+  .print\:page-break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  
+  h1, h2, h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  
+  p {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* Ensure text in colored backgrounds is visible and bold */
+  [style*="background"] {
+    color: white !important;
+    font-weight: bold !important;
+    text-shadow: 0 0 1px rgba(0,0,0,0.5);
+  }
+}

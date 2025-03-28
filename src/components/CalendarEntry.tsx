@@ -76,6 +76,7 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
       className={cn(
         "calendar-entry p-6 rounded-2xl relative overflow-hidden",
         "flex flex-col w-full backdrop-blur-sm transition-all duration-300",
+        "h-full", // Make sure card takes full height of its container
         highlighted 
           ? "glass-card border-2" 
           : "bg-white/80 shadow-sm hover:shadow-lg border border-gray-100",
@@ -128,19 +129,19 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
         </div>
       </div>
       
-      <h3 className="text-xl font-semibold text-gray-800 mb-3">
+      <h3 className="text-xl font-semibold text-gray-800 mb-3 line-clamp-2 break-words">
         {title}
       </h3>
       
       <div className="flex-1">
-        <p className="text-gray-700 text-sm leading-relaxed line-clamp-3">
+        <p className="text-gray-700 text-sm leading-relaxed break-words overflow-hidden line-clamp-3">
           {text}
         </p>
       </div>
       
       {/* Display social media icons - fixed to always show when socialNetworks are provided */}
       {socialNetworks && socialNetworks.length > 0 && (
-        <div className="mt-3 flex items-center space-x-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {socialNetworks.map((network, idx) => (
             <span 
               key={idx} 
