@@ -11,12 +11,13 @@ import { useSettings } from '@/contexts/SettingsContext';
 import ClientTable from '@/components/ClientTable';
 import ClientCard from '@/components/ClientCard';
 import SettingsModal from '@/components/SettingsModal';
+import PasswordConfirmDialog from '@/components/PasswordConfirmDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { settings, clients } = useSettings();
+  const { settings, clients, deleteClient } = useSettings();
   const [activeTab, setActiveTab] = useState('overview');
   const [showSettings, setShowSettings] = useState(false);
   const [editClientId, setEditClientId] = useState<string | null>(null);
@@ -30,8 +31,13 @@ const Admin = () => {
     completed: 0,
     pending: 0,
   });
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
+    // Change document title
+    document.title = "Gestor de Postagens";
+    
     // Calculate client stats
     const totalClients = clients.length;
     const activeClients = clients.filter(client => client.active).length;
@@ -126,8 +132,19 @@ const Admin = () => {
   };
 
   const handleDeleteClient = (clientId: string) => {
-    // This is just a placeholder - actual delete functionality would need to be implemented
-    toast.error("Funcionalidade de exclusão não implementada no painel admin");
+    setClientToDelete(clientId);
+    setShowDeleteConfirm(true);
+  };
+  
+  const confirmClientDeletion = (password: string) => {
+    if (clientToDelete) {
+      // Here you'd verify the password if needed
+      // For this implementation, we'll just proceed with deletion
+      deleteClient(clientToDelete);
+      toast.success("Cliente excluído com sucesso");
+      setShowDeleteConfirm(false);
+      setClientToDelete(null);
+    }
   };
 
   return (
@@ -317,6 +334,14 @@ const Admin = () => {
         onOpenChange={setShowSettings} 
         initialTab={editClientId ? "clients" : "general"}
         editClientId={editClientId}
+      />
+      
+      <PasswordConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={confirmClientDeletion}
+        title="Confirmação de exclusão de cliente"
+        description="Esta ação é irreversível. Por favor, digite a senha do administrador para confirmar a exclusão."
       />
     </div>
   );

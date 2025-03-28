@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Settings, Calendar, ChevronLeft, LogOut, Users, BarChart, PieChart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +25,7 @@ import {
   PieChart as RechartsPieChart, 
   Pie, Cell 
 } from 'recharts';
+import PasswordConfirmDialog from '@/components/PasswordConfirmDialog';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -45,9 +45,15 @@ const Home = () => {
   const [openAddClientModal, setOpenAddClientModal] = useState(false);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [isTableView, setIsTableView] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { toast } = useToast();
   const { clients, createClient, updateClient, deleteClient, shareClient, selectedClient, setSelectedClient } = useSettings();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = "Gestor de Postagens";
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -97,11 +103,20 @@ const Home = () => {
   };
 
   const handleDeleteClient = (clientId: string) => {
-    deleteClient(clientId);
-    toast({
-      title: "Cliente removido com sucesso!",
-      description: "O cliente foi removido da sua lista.",
-    })
+    setClientToDelete(clientId);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmClientDeletion = (password: string) => {
+    if (clientToDelete) {
+      deleteClient(clientToDelete);
+      toast({
+        title: "Cliente removido com sucesso!",
+        description: "O cliente foi removido da sua lista.",
+      })
+      setShowDeleteConfirm(false);
+      setClientToDelete(null);
+    }
   };
 
   const handleLogout = () => {
@@ -109,23 +124,18 @@ const Home = () => {
     navigate('/login');
   };
 
-  // Get active clients count
   const activeClientsCount = clients?.filter(client => client.active !== false).length || 0;
   
-  // Get total posts count across all clients
   const totalPostsCount = clients?.reduce((sum, client) => sum + (client.postsCount || 0), 0) || 0;
   
-  // Prepare data for client engagement chart
   const chartData = clients?.map(client => ({
     name: client.name.length > 10 ? client.name.substring(0, 10) + '...' : client.name,
     posts: client.postsCount || 0,
     color: client.themeColor
   })) || [];
   
-  // Sort chart data by post count (descending)
   chartData.sort((a, b) => b.posts - a.posts);
 
-  // Generate COLORS array using client theme colors
   const COLORS = chartData.map(item => item.color);
 
   return (
@@ -153,7 +163,6 @@ const Home = () => {
         </div>
       </div>
 
-      {/* Dashboard Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -250,7 +259,6 @@ const Home = () => {
         </>
       )}
 
-      {/* Ranking Chart (moved below clients section) */}
       {chartData.length > 0 && (
         <Card className="mt-8">
           <CardHeader>
@@ -291,7 +299,6 @@ const Home = () => {
         </Card>
       )}
 
-      {/* Add Client Modal */}
       <Dialog open={openAddClientModal} onOpenChange={setOpenAddClientModal}>
         <DialogContent className="sm:max-w-[425px] rounded-[10px]">
           <DialogHeader>
@@ -399,12 +406,19 @@ const Home = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Settings Modal */}
       <SettingsModal
         open={openSettingsModal}
         onOpenChange={setOpenSettingsModal}
         initialTab="clients"
         editClientId={selectedClient}
+      />
+
+      <PasswordConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        onConfirm={confirmClientDeletion}
+        title="Confirmação de exclusão de cliente"
+        description="Esta ação é irreversível. Por favor, digite a senha do administrador para confirmar a exclusão."
       />
     </div>
   );

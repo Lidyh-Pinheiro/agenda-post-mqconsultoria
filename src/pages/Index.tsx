@@ -59,6 +59,8 @@ const Index = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   
   useEffect(() => {
+    document.title = "Gestor de Postagens";
+    
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
       setPosts(JSON.parse(storedPosts));

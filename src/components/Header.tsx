@@ -30,7 +30,7 @@ const Header: React.FC<HeaderProps> = ({
   
   return (
     <div className="animate-slide-up w-full mb-10 text-center relative">
-      {showSettings && (
+      {showSettings && onOpenSettings && (
         <div className="absolute right-0 top-0">
           <Button
             variant="ghost"
