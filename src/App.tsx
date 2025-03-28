@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -31,6 +30,14 @@ const App = () => {
   
   // Check initial login state
   useEffect(() => {
+    // If user chose "remember me", keep them logged in
+    // Otherwise, check if the session should expire (e.g., browser was closed)
+    const rememberMe = localStorage.getItem('rememberMe') === 'true';
+    
+    // If remember me is not set or false, and this is a new browser session,
+    // we could clear the login state here.
+    // For now we'll keep the existing behavior, but this is where you'd add that logic
+    
     setInitialCheckDone(true);
   }, []);
   

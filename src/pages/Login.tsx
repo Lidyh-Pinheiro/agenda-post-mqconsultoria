@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,6 +15,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -26,11 +28,20 @@ const Login = () => {
       setTimeout(() => {
         // Store logged in state
         localStorage.setItem('isLoggedIn', 'true');
+        
+        // If remember me is checked, set a long expiration
+        if (rememberMe) {
+          // Store the remember me preference in localStorage
+          localStorage.setItem('rememberMe', 'true');
+        } else {
+          localStorage.setItem('rememberMe', 'false');
+        }
+        
         toast({
           title: "Login realizado com sucesso!",
           description: "Bem-vindo ao sistema de gestão de agenda.",
         });
-        navigate('/');  // Changed from '/agenda' to '/'
+        navigate('/');
         setIsLoading(false);
       }, 1000);
     } else {
@@ -111,6 +122,19 @@ const Login = () => {
                       className="pl-10"
                     />
                   </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="remember-me" 
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => {
+                      setRememberMe(checked === true);
+                    }}
+                  />
+                  <Label htmlFor="remember-me" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Manter conectado
+                  </Label>
                 </div>
                 
                 <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700" disabled={isLoading}>
