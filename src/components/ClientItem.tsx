@@ -2,8 +2,9 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users, Share2 } from 'lucide-react';
+import { Calendar, Users, Share2, Link } from 'lucide-react';
 import { Client } from '@/contexts/SettingsContext';
+import { toast } from 'sonner';
 
 interface ClientItemProps {
   client: Client;
@@ -23,8 +24,11 @@ const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect, onShare }) =>
     e.stopPropagation();
     const url = generateClientViewUrl();
     navigator.clipboard.writeText(url);
-    // Alert user that the URL has been copied (you might want to use a toast instead)
-    alert(`URL copiada: ${url}`);
+    
+    // Use toast instead of alert for better UX
+    toast.success("URL copiada!", {
+      description: "Link de acesso do cliente copiado para a área de transferência."
+    });
   };
 
   return (
@@ -86,8 +90,8 @@ const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect, onShare }) =>
             className="w-full"
             style={{ borderColor: client.themeColor, color: client.themeColor }}
           >
-            <Share2 className="w-4 h-4 mr-1" />
-            Compartilhar
+            <Link className="w-4 h-4 mr-1" />
+            Copiar URL
           </Button>
         </div>
       </CardContent>
