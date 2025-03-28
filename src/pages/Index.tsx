@@ -4,7 +4,7 @@ import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
 import CalendarEntry from '@/components/CalendarEntry';
 import { toast } from 'sonner';
-import { Check, X, Upload, Image, Calendar, Edit, Save, ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Check, X, Upload, Image, Calendar, Edit, Save, ArrowLeft, Plus, Trash2, Share } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import SettingsModal from '@/components/SettingsModal';
 import AddPostModal from '@/components/AddPostModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
+import ShareModal from '@/components/ShareModal';
 import { format, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -168,12 +169,12 @@ const Index = () => {
   const [page, setPage] = useState(1);
   const postsPerPage = 10;
   
-  // Add state for new modals
   const [addPostOpen, setAddPostOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<number | null>(null);
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(undefined);
-  
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
@@ -247,7 +248,6 @@ const Index = () => {
   const paginatedPosts = filteredPosts.slice((page - 1) * postsPerPage, page * postsPerPage);
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
 
-  // New functions for adding and deleting posts
   const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
     const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
     const newPost: CalendarPost = {
@@ -616,9 +616,10 @@ const Index = () => {
                     variant="ghost"
                     size="sm"
                     className="flex items-center gap-1 text-gray-500 hover:text-gray-700"
+                    onClick={() => setShareModalOpen(true)}
                   >
-                    <FileDown className="h-4 w-4" />
-                    <span className="text-sm">Exportar PDF</span>
+                    <Share className="h-4 w-4" />
+                    <span className="text-sm">Compartilhar</span>
                   </Button>
                 </div>
                 
@@ -1022,6 +1023,12 @@ const Index = () => {
           onOpenChange={setSettingsOpen}
         />
       )}
+      
+      <ShareModal 
+        open={shareModalOpen} 
+        onOpenChange={setShareModalOpen} 
+        clientId={selectedClient?.id || null}
+      />
     </div>
   );
 };
