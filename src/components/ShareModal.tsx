@@ -12,9 +12,10 @@ interface ShareModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clientId: string | undefined;
+  posts?: any[]; // Add this prop
 }
 
-const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId }) => {
+const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, posts }) => {
   const { settings, generateClientShareLink } = useSettings();
   const [shareLink, setShareLink] = useState('');
   const [copied, setCopied] = useState(false);
@@ -49,9 +50,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId })
     setIsPublishing(true);
     
     try {
-      // Get all posts for this client from localStorage
-      const allPosts = getAllPostsFromLocalStorage();
-      const clientPosts = allPosts.filter(post => post.clientId === clientId);
+      // Get all posts for this client - either from props or from localStorage
+      const clientPosts = posts || getAllPostsFromLocalStorage().filter(post => post.clientId === clientId);
       
       // Make sure we have data to publish
       if (clientPosts.length === 0) {

@@ -182,74 +182,74 @@ const ClientAgenda = () => {
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
 
   const handleAddPost = async (newPostData: Omit<CalendarPost, 'id'>) => {
-  try {
-    const { data: newPost, error } = await supabase
-      .from('calendar_posts')
-      .insert({
-        client_id: clientId,
-        date: newPostData.date,
-        day: newPostData.day,
-        day_of_week: newPostData.dayOfWeek,
-        title: newPostData.title,
-        type: newPostData.type,
-        post_type: newPostData.postType,
-        text: newPostData.text,
-        completed: false,
-        notes: newPostData.observation || ''
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('Error saving post:', error);
-      throw error;
-    }
-    
-    if (newPostData.socialNetworks && newPostData.socialNetworks.length > 0) {
-      const networksToInsert = newPostData.socialNetworks.map(network => ({
-        post_id: newPost.id,
-        network_name: network
-      }));
-      
-      const { error: networksError } = await supabase
-        .from('post_social_networks')
-        .insert(networksToInsert);
+    try {
+      const { data: newPost, error } = await supabase
+        .from('calendar_posts')
+        .insert({
+          client_id: clientId,
+          date: newPostData.date,
+          day: newPostData.day,
+          day_of_week: newPostData.dayOfWeek,
+          title: newPostData.title,
+          type: newPostData.type,
+          post_type: newPostData.postType,
+          text: newPostData.text,
+          completed: false,
+          notes: newPostData.notes || ''
+        })
+        .select()
+        .single();
         
-      if (networksError) {
-        console.error('Error saving social networks:', networksError);
+      if (error) {
+        console.error('Error saving post:', error);
+        throw error;
       }
+      
+      if (newPostData.socialNetworks && newPostData.socialNetworks.length > 0) {
+        const networksToInsert = newPostData.socialNetworks.map(network => ({
+          post_id: newPost.id,
+          network_name: network
+        }));
+        
+        const { error: networksError } = await supabase
+          .from('post_social_networks')
+          .insert(networksToInsert);
+          
+        if (networksError) {
+          console.error('Error saving social networks:', networksError);
+        }
+      }
+      
+      const createdPost: CalendarPost = {
+        id: newPost.id,
+        date: newPost.date,
+        day: newPost.day,
+        dayOfWeek: newPost.day_of_week,
+        title: newPost.title,
+        type: newPost.type,
+        postType: newPost.post_type,
+        text: newPost.text,
+        completed: newPost.completed,
+        notes: newPost.notes,
+        clientId: newPost.client_id,
+        socialNetworks: newPostData.socialNetworks
+      };
+      
+      setPosts(prev => [...prev, createdPost]);
+      
+      toast.success("Postagem adicionada com sucesso!", {
+        description: `${newPost.date} - ${newPost.title}`,
+        duration: 3000,
+      });
+      
+    } catch (error) {
+      console.error('Error saving post:', error);
+      toast.error("Erro ao salvar postagem", {
+        description: "Verifique sua conexão e tente novamente",
+        duration: 3000,
+      });
     }
-    
-    const createdPost: CalendarPost = {
-      id: newPost.id,
-      date: newPost.date,
-      day: newPost.day,
-      dayOfWeek: newPost.day_of_week,
-      title: newPost.title,
-      type: newPost.type,
-      postType: newPost.post_type,
-      text: newPost.text,
-      completed: newPost.completed,
-      notes: newPost.notes,
-      clientId: newPost.client_id,
-      socialNetworks: newPostData.socialNetworks
-    };
-    
-    setPosts(prev => [...prev, createdPost]);
-    
-    toast.success("Postagem adicionada com sucesso!", {
-      description: `${newPost.date} - ${newPost.title}`,
-      duration: 3000,
-    });
-    
-  } catch (error) {
-    console.error('Error saving post:', error);
-    toast.error("Erro ao salvar postagem", {
-      description: "Verifique sua conexão e tente novamente",
-      duration: 3000,
-    });
-  }
-};
+  };
   
   const openDeleteConfirmation = (postId: number) => {
     setPostToDelete(postId);

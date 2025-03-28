@@ -191,14 +191,27 @@ export const removeImageFromPost = (postId, imageUrl) => {
 
 // Mock Supabase interface to be compatible with existing code
 export const supabase = {
+  auth: {
+    updateUser: (data) => {
+      console.log('Mock updateUser called with:', data);
+      return { data: null, error: null };
+    }
+  },
   from: (table) => {
     return {
       select: (columns) => {
         return {
           eq: (column, value) => {
+            const posts = getAllPostsFromLocalStorage().filter(post => post[column] === value);
             return {
-              data: getAllPostsFromLocalStorage().filter(post => post.clientId === value),
-              error: null
+              data: posts,
+              error: null,
+              single: () => {
+                return { 
+                  data: posts.length > 0 ? posts[0] : null, 
+                  error: posts.length > 0 ? null : new Error('Not found') 
+                };
+              }
             };
           },
           single: () => {
@@ -227,7 +240,14 @@ export const supabase = {
         const success = savePostToLocalStorage(data);
         return {
           data: success ? data : null,
-          error: success ? null : new Error('Failed to insert data')
+          error: success ? null : new Error('Failed to insert data'),
+          select: () => {
+            return {
+              single: () => {
+                return { data: success ? data : null, error: success ? null : new Error('Failed to insert data') };
+              }
+            };
+          }
         };
       },
       update: (data) => {

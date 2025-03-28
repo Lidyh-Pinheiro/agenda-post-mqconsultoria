@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -52,148 +51,51 @@ const ClientPostDetail = () => {
     }
   }, [clientId, settings.clients, navigate]);
   
+  const fetchPost = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch the post from localStorage
+      const allPosts = supabase.from('calendar_posts').select('*').eq('clientId', clientId).data;
+      const foundPost = allPosts.find(p => p.id.toString() === postId);
+      
+      if (!foundPost) {
+        console.error('Post not found in localStorage');
+        // Post not found, redirect back
+        navigate(`/client/${clientId}`);
+        return;
+      }
+      
+      const formattedPost = {
+        ...foundPost,
+        clientId: foundPost.clientId || clientId
+      };
+      
+      setPost(formattedPost);
+      setEditedPost({...formattedPost});
+      
+    } catch (error) {
+      console.error('Error fetching post details:', error);
+      toast.error('Erro ao carregar detalhes da postagem');
+      navigate(`/client/${clientId}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Load post from Supabase
   useEffect(() => {
     if (!postId || !clientId) return;
-    
-    const fetchPost = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch the post from Supabase
-        const { data: postData, error: postError } = await supabase
-          .from('calendar_posts')
-          .select('*')
-          .eq('id', postId)
-          .single();
-          
-        if (postError) {
-          console.error('Error fetching post:', postError);
-          
-          // Try fetching from localStorage as fallback
-          const storedPosts = localStorage.getItem('calendarPosts');
-          if (storedPosts) {
-            const allPosts = JSON.parse(storedPosts);
-            const foundPost = allPosts.find((p: any) => p.id.toString() === postId);
-            
-            if (foundPost) {
-              const formattedPost = {
-                ...foundPost,
-                clientId: foundPost.clientId || clientId
-              };
-              
-              setPost(formattedPost);
-              setEditedPost({...formattedPost});
-              
-              // Migrate this post to Supabase
-              const migratedPost = await migratePostToSupabase(formattedPost);
-              if (migratedPost) {
-                // Redirect to the new post ID
-                navigate(`/client/${clientId}/post/${migratedPost.id}`, { replace: true });
-              }
-            } else {
-              // Post not found, redirect back
-              navigate(`/client/${clientId}`);
-            }
-          } else {
-            // No posts in localStorage, redirect back
-            navigate(`/client/${clientId}`);
-          }
-        } else {
-          // Fetch post images
-          const { data: imagesData } = await supabase
-            .from('post_images')
-            .select('url')
-            .eq('post_id', postId);
-            
-          // Fetch post social networks
-          const { data: networksData } = await supabase
-            .from('post_social_networks')
-            .select('network_name')
-            .eq('post_id', postId);
-            
-          const enhancedPost = {
-            ...postData,
-            id: postData.id,
-            clientId: postData.client_id,
-            dayOfWeek: postData.day_of_week,
-            postType: postData.post_type,
-            images: imagesData ? imagesData.map(img => img.url) : [],
-            socialNetworks: networksData ? networksData.map(net => net.network_name) : []
-          };
-          
-          setPost(enhancedPost);
-          setEditedPost({...enhancedPost});
-        }
-      } catch (error) {
-        console.error('Error fetching post details:', error);
-        toast.error('Erro ao carregar detalhes da postagem');
-        navigate(`/client/${clientId}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     
     fetchPost();
   }, [postId, clientId, navigate]);
   
   const migratePostToSupabase = async (post: CalendarPost) => {
     try {
-      const { data: newPost, error: postError } = await supabase
-        .from('calendar_posts')
-        .insert({
-          client_id: clientId,
-          date: post.date,
-          day: post.day,
-          day_of_week: post.dayOfWeek,
-          title: post.title,
-          type: post.type,
-          post_type: post.postType,
-          text: post.text,
-          completed: post.completed || false,
-          notes: post.notes || ''
-        })
-        .select()
-        .single();
-        
-      if (postError || !newPost) {
-        throw postError || new Error('Failed to insert post');
-      }
-      
-      // Insert images if any
-      if (post.images && post.images.length > 0) {
-        const imagesToInsert = post.images.map(url => ({
-          post_id: newPost.id,
-          url: url
-        }));
-        
-        const { error: imagesError } = await supabase
-          .from('post_images')
-          .insert(imagesToInsert);
-          
-        if (imagesError) {
-          console.error('Error migrating images:', imagesError);
-        }
-      }
-      
-      // Insert social networks if any
-      if (post.socialNetworks && post.socialNetworks.length > 0) {
-        const networksToInsert = post.socialNetworks.map(network => ({
-          post_id: newPost.id,
-          network_name: network
-        }));
-        
-        const { error: networksError } = await supabase
-          .from('post_social_networks')
-          .insert(networksToInsert);
-          
-        if (networksError) {
-          console.error('Error migrating social networks:', networksError);
-        }
-      }
-      
-      return newPost;
+      // In our localStorage implementation, we'll just save the post
+      supabase.from('calendar_posts').insert(post);
+      return post;
     } catch (error) {
-      console.error('Error migrating post to Supabase:', error);
+      console.error('Error saving post to localStorage:', error);
       return null;
     }
   };
@@ -206,13 +108,9 @@ const ClientPostDetail = () => {
     if (!post) return;
     
     try {
-      const { error } = await supabase
-        .from('calendar_posts')
-        .update({ completed })
-        .eq('id', post.id);
-        
-      if (error) throw error;
-      
+      // Update the post in localStorage
+      supabase.from('calendar_posts').update({ completed }).eq('id', post.id);
+    
       setPost(prev => prev ? {...prev, completed} : null);
       
       toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
@@ -228,12 +126,8 @@ const ClientPostDetail = () => {
     if (!post) return;
     
     try {
-      const { error } = await supabase
-        .from('calendar_posts')
-        .update({ notes })
-        .eq('id', post.id);
-        
-      if (error) throw error;
+      // Update notes in localStorage
+      supabase.from('calendar_posts').update({ notes }).eq('id', post.id);
       
       setPost(prev => prev ? {...prev, notes} : null);
     } catch (error) {
