@@ -1,21 +1,31 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, ChevronLeft, LogOut } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Post } from '@/contexts/SettingsContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import PostList from '@/components/PostList';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-interface RouteParams {
-  clientId: string;
+// Define Post type and Client type
+interface Post {
+  id: string;
+  title: string;
+  content: string;
+  client_id: string;
+  date: string;
+  created_at: string;
+}
+
+interface Client {
+  id: string;
+  name: string;
 }
 
 const ClientAgenda = () => {
-  const { clientId } = useParams<RouteParams>();
+  const { clientId } = useParams<{ clientId: string }>();
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const navigate = useNavigate();
@@ -25,9 +35,9 @@ const ClientAgenda = () => {
     navigate('/login');
   };
 
-  const { data: client, isLoading, isError } = useQuery(
-    ['client', clientId],
-    async () => {
+  const { data: client, isLoading, isError } = useQuery({
+    queryKey: ['client', clientId],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
@@ -38,9 +48,9 @@ const ClientAgenda = () => {
         throw new Error(error.message);
       }
 
-      return data;
+      return data as Client;
     }
-  );
+  });
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -114,7 +124,31 @@ const ClientAgenda = () => {
         </div>
       </Card>
 
-      <PostList posts={posts} clientId={clientId} />
+      {/* Create a simple implementation of PostList */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Postagens</h2>
+        {posts.length === 0 ? (
+          <Card className="p-4">
+            <p className="text-gray-500 text-center">Nenhuma postagem para esta data.</p>
+          </Card>
+        ) : (
+          posts.map((post) => (
+            <Card key={post.id} className="p-4">
+              <h3 className="font-medium text-lg">{post.title}</h3>
+              <p className="text-gray-600 mt-2">{post.content}</p>
+              <div className="mt-3 flex justify-end">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(`/client/${clientId}/post/${post.id}`)}
+                >
+                  Ver detalhes
+                </Button>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 };
