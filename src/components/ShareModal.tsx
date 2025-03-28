@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -131,15 +130,15 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             .card-container { 
               display: grid; 
               grid-template-columns: repeat(2, 1fr);
-              gap: 24px; 
+              gap: 20px; 
               width: 100%;
             }
             .card { 
               border: 1px solid rgba(255, 255, 255, 0.3); 
               border-radius: 12px; 
-              padding: 24px; 
-              margin-bottom: 24px; 
-              box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+              padding: 18px; 
+              margin-bottom: 0; 
+              box-shadow: 0 2px 6px rgba(0,0,0,0.03);
               background: rgba(255, 255, 255, 0.8);
               backdrop-filter: blur(12px);
               -webkit-backdrop-filter: blur(12px);
@@ -147,21 +146,24 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               page-break-inside: avoid;
               overflow: hidden;
               max-width: 100%;
+              height: auto;
+              display: flex;
+              flex-direction: column;
             }
             .card-date { 
               background-color: ${themeColor}; 
               color: white !important; 
               display: inline-block; 
-              padding: 8px 16px; 
+              padding: 6px 12px; 
               border-radius: 20px; 
               font-weight: 700; 
-              margin-bottom: 16px; 
-              font-size: 14px;
+              margin-bottom: 12px; 
+              font-size: 13px;
             }
             .card-title { 
-              font-size: 20px; 
+              font-size: 18px; 
               font-weight: 700; 
-              margin-bottom: 12px; 
+              margin-bottom: 10px; 
               color: #333;
               word-wrap: break-word;
               overflow-wrap: break-word;
@@ -171,18 +173,18 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             .card-type { 
               background-color: #f1f5f9; 
               color: #64748b; 
-              padding: 6px 12px; 
+              padding: 4px 10px; 
               border-radius: 12px; 
               display: inline-block; 
-              font-size: 13px; 
-              margin-bottom: 14px; 
+              font-size: 12px; 
+              margin-bottom: 12px; 
               font-weight: 600;
             }
             .card-text { 
               white-space: pre-line; 
               color: #4b5563;
-              line-height: 1.6;
-              font-size: 15px;
+              line-height: 1.5;
+              font-size: 14px;
               text-align: justify;
               word-wrap: break-word;
               overflow-wrap: break-word;
@@ -193,13 +195,13 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               display: flex;
               flex-wrap: wrap;
               gap: 8px;
-              margin-top: 16px;
+              margin-top: 12px;
             }
             .social-icon {
               background-color: #f1f5f9;
               color: #64748b;
-              width: 28px;
-              height: 28px;
+              width: 24px;
+              height: 24px;
               border-radius: 50%;
               display: flex;
               align-items: center;
@@ -220,7 +222,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               .card-container {
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
-                gap: 16px;
+                gap: 20px;
                 width: 100%;
               }
               .card { 
@@ -228,9 +230,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 break-inside: avoid; 
                 page-break-inside: avoid;
                 border: 1px solid rgba(255, 255, 255, 0.3);
-                margin-bottom: 16px;
+                margin-bottom: 0;
                 width: 100%;
                 overflow: hidden;
+                box-shadow: none;
               }
               .card-text {
                 max-width: 100%;

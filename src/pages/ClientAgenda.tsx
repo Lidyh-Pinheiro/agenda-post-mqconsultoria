@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { ArrowLeft, Calendar, Filter, Plus, Trash2, Share } from 'lucide-react';
+import { ArrowLeft, Calendar, Filter, Plus, Trash2, Share, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import CalendarEntry from '@/components/CalendarEntry';
@@ -295,7 +295,7 @@ const ClientAgenda = () => {
       
       <div className="max-w-5xl mx-auto px-4 py-16">
         <TransitionLayout>
-          <div className="mb-6 flex items-center">
+          <div className="mb-6 flex items-center justify-between">
             <Button
               onClick={handleBackToHome}
               variant="ghost"
@@ -303,6 +303,15 @@ const ClientAgenda = () => {
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar ao início
+            </Button>
+            
+            <Button
+              onClick={handleBackToHome}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <Home className="h-4 w-4" />
+              Início
             </Button>
           </div>
           
