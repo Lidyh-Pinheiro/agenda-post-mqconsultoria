@@ -24,7 +24,15 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { ChevronLeft, Calendar as CalendarIcon, Filter } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  Calendar as CalendarIcon, 
+  Filter, 
+  FileDown,
+  ArrowLeft
+} from 'lucide-react';
+import { useSettings } from '@/contexts/SettingsContext';
+import SettingsModal from '@/components/SettingsModal';
 
 interface CalendarPost {
   id: number;
@@ -38,10 +46,16 @@ interface CalendarPost {
   completed?: boolean;
   notes?: string;
   images?: string[];
+  clientId?: string;
 }
 
 const AllPosts = () => {
   const navigate = useNavigate();
+  const { settings, getSelectedClient } = useSettings();
+  const selectedClient = getSelectedClient();
+  const themeColor = selectedClient ? selectedClient.themeColor : "#dc2626";
+  
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [posts, setPosts] = useState<CalendarPost[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [filteredPosts, setFilteredPosts] = useState<CalendarPost[]>([]);
@@ -51,10 +65,25 @@ const AllPosts = () => {
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
-      setPosts(JSON.parse(storedPosts));
-      setFilteredPosts(JSON.parse(storedPosts));
+      const allPosts = JSON.parse(storedPosts);
+      
+      // Filter posts for the selected client if one is selected
+      if (selectedClient) {
+        const clientPosts = allPosts.filter(
+          (post: CalendarPost) => !post.clientId || post.clientId === selectedClient.id
+        );
+        setPosts(clientPosts);
+        setFilteredPosts(clientPosts);
+      } else {
+        // No client selected, show all posts without a clientId
+        const nonClientPosts = allPosts.filter(
+          (post: CalendarPost) => !post.clientId
+        );
+        setPosts(nonClientPosts);
+        setFilteredPosts(nonClientPosts);
+      }
     }
-  }, []);
+  }, [selectedClient]);
 
   // Apply filter when month changes
   useEffect(() => {
@@ -85,33 +114,77 @@ const AllPosts = () => {
   const handleBackToHome = () => {
     navigate('/');
   };
+  
+  // Navigate back to agenda
+  const handleBackToAgenda = () => {
+    navigate('/agenda');
+  };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white">
-      <div className="fixed top-0 right-0 w-1/3 h-1/3 bg-red-100 rounded-bl-full opacity-30 -z-10" />
-      <div className="fixed bottom-0 left-0 w-1/2 h-1/2 bg-red-100 rounded-tr-full opacity-20 -z-10" />
+    <div 
+      className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
+      style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}10, white)` }}
+    >
+      <div 
+        className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
+        style={{ backgroundColor: `${themeColor}20` }}
+      />
+      <div 
+        className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
+        style={{ backgroundColor: `${themeColor}20` }}
+      />
       
       <div className="max-w-6xl mx-auto px-4 py-16">
         <TransitionLayout>
-          <button 
-            onClick={handleBackToHome}
-            className="mb-6 flex items-center text-red-600 hover:text-red-500 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5 mr-1" />
-            Voltar ao calendário
-          </button>
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex">
+              <Button 
+                onClick={handleBackToHome}
+                variant="ghost"
+                className="mr-4 flex items-center text-gray-600 hover:text-gray-800"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Início
+              </Button>
+              
+              <Button 
+                onClick={handleBackToAgenda}
+                variant="ghost"
+                className="flex items-center"
+                style={{ color: themeColor }}
+              >
+                <ChevronLeft className="w-5 h-5 mr-1" />
+                Voltar à agenda
+              </Button>
+            </div>
+            
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1 text-gray-500 hover:text-gray-700"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <FileDown className="h-4 w-4" />
+              <span className="text-sm">Exportar PDF</span>
+            </Button>
+          </div>
           
           <Header 
             title="Todas as Postagens" 
-            subtitle="Visualize todas as postagens agendadas" 
-            useRedTheme={true}
+            subtitle={selectedClient ? selectedClient.name : "Visualize todas as postagens agendadas"} 
+            themeColor={themeColor}
+            showSettings={true}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
             <div className="lg:col-span-1">
               <Card className="p-4 shadow-md bg-white">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <CalendarIcon className="w-5 h-5 mr-2 text-red-600" />
+                  <CalendarIcon 
+                    className="w-5 h-5 mr-2"
+                    style={{ color: themeColor }} 
+                  />
                   Calendário de Postagens
                 </h3>
                 <div className="bg-white rounded-lg shadow-sm p-1">
@@ -126,8 +199,8 @@ const AllPosts = () => {
                     }}
                     modifiersStyles={{
                       booked: {
-                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
-                        color: '#dc2626',
+                        backgroundColor: `${themeColor}20`,
+                        color: themeColor,
                         fontWeight: 'bold',
                       }
                     }}
@@ -140,7 +213,10 @@ const AllPosts = () => {
               <Card className="p-6 shadow-md bg-white">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                    <Filter className="w-5 h-5 mr-2 text-red-600" />
+                    <Filter 
+                      className="w-5 h-5 mr-2"
+                      style={{ color: themeColor }} 
+                    />
                     Lista de Postagens
                   </h3>
                   <div className="flex items-center space-x-2">
@@ -149,7 +225,10 @@ const AllPosts = () => {
                       value={filterMonth} 
                       onValueChange={setFilterMonth}
                     >
-                      <SelectTrigger className="w-[140px] border-red-200 focus:ring-red-400">
+                      <SelectTrigger 
+                        className="w-[140px] focus:ring-0 focus:ring-offset-0"
+                        style={{ borderColor: `${themeColor}40` }}
+                      >
                         <SelectValue placeholder="Selecione o mês" />
                       </SelectTrigger>
                       <SelectContent>
@@ -185,9 +264,11 @@ const AllPosts = () => {
                     <TableBody>
                       {filteredPosts.length > 0 ? (
                         filteredPosts.map((post) => (
-                          <TableRow key={post.id} className="cursor-pointer hover:bg-red-50" onClick={() => navigate(`/?post=${post.id}`)}>
+                          <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/agenda?post=${post.id}`)}>
                             <TableCell className="font-medium">
-                              <div className="date-badge-red text-white text-xs font-medium py-1 px-2 rounded-full inline-flex">
+                              <div className="text-white text-xs font-medium py-1 px-2 rounded-full inline-flex"
+                                style={{ backgroundColor: themeColor }}
+                              >
                                 {post.date}
                               </div>
                             </TableCell>
@@ -208,10 +289,11 @@ const AllPosts = () => {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                className="hover:bg-gray-100"
+                                style={{ color: themeColor }}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/?post=${post.id}`);
+                                  navigate(`/agenda?post=${post.id}`);
                                 }}
                               >
                                 Ver detalhes
@@ -234,8 +316,10 @@ const AllPosts = () => {
           </div>
         </TransitionLayout>
         
+        <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+        
         <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p>Agenda de Postagens • Vereadora Neia Marques</p>
+          <p>Agenda de Postagens • {settings.ownerName}</p>
         </footer>
       </div>
     </div>

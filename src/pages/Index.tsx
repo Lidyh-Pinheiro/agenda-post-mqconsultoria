@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import Header from '@/components/Header';
 import CalendarEntry from '@/components/CalendarEntry';
 import { toast } from 'sonner';
-import { Check, X, Upload, Image, Calendar, Edit, Save } from 'lucide-react';
+import { Check, X, Upload, Image, Calendar, Edit, Save, ArrowLeft } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -12,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSettings } from '@/contexts/SettingsContext';
+import SettingsModal from '@/components/SettingsModal';
 
 interface CalendarPost {
   id: number;
@@ -25,6 +26,7 @@ interface CalendarPost {
   completed?: boolean;
   notes?: string;
   images?: string[];
+  clientId?: string;
 }
 
 const calendarPosts: CalendarPost[] = [
@@ -119,6 +121,10 @@ const Index = () => {
   const [searchParams] = useSearchParams();
   const postId = searchParams.get('post');
   
+  const { settings, getSelectedClient } = useSettings();
+  const selectedClient = getSelectedClient();
+  const themeColor = selectedClient ? selectedClient.themeColor : "#dc2626";
+  
   const [selectedPost, setSelectedPost] = useState<CalendarPost | null>(null);
   const [isDetailView, setIsDetailView] = useState(false);
   const [visiblePosts, setVisiblePosts] = useState<CalendarPost[]>([]);
@@ -126,19 +132,43 @@ const Index = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
-      setPosts(JSON.parse(storedPosts));
+      let allPosts = JSON.parse(storedPosts);
+      
+      if (selectedClient) {
+        const clientPosts = allPosts.filter(
+          (post: CalendarPost) => !post.clientId || post.clientId === selectedClient.id
+        );
+        setPosts(clientPosts);
+      } else {
+        const nonClientPosts = allPosts.filter(
+          (post: CalendarPost) => !post.clientId
+        );
+        setPosts(nonClientPosts);
+      }
     } else {
       setPosts(calendarPosts);
     }
-  }, []);
+  }, [selectedClient]);
 
   useEffect(() => {
     if (posts.length > 0) {
-      localStorage.setItem('calendarPosts', JSON.stringify(posts));
+      const storedPosts = localStorage.getItem('calendarPosts');
+      if (storedPosts) {
+        const allPosts = JSON.parse(storedPosts);
+        
+        const postsToKeep = allPosts.filter((p: CalendarPost) => 
+          !posts.some(newP => newP.id === p.id)
+        );
+        
+        localStorage.setItem('calendarPosts', JSON.stringify([...postsToKeep, ...posts]));
+      } else {
+        localStorage.setItem('calendarPosts', JSON.stringify(posts));
+      }
     }
   }, [posts]);
 
@@ -150,7 +180,6 @@ const Index = () => {
     return () => clearTimeout(timer);
   }, [posts]);
   
-  // Handle URL param for direct post access
   useEffect(() => {
     if (postId && posts.length > 0) {
       const post = posts.find(p => p.id === parseInt(postId));
@@ -177,8 +206,7 @@ const Index = () => {
     setIsDetailView(false);
     setIsEditing(false);
     
-    // Clear the post parameter from URL
-    navigate('/', { replace: true });
+    navigate('/agenda', { replace: true });
     
     setTimeout(() => {
       setSelectedPost(null);
@@ -251,7 +279,6 @@ const Index = () => {
         if (post.id === postId) {
           const updatedImages = [...(post.images || []), ...uploadedImageUrls];
           
-          // Update selectedPost if it's the current post
           if (selectedPost && selectedPost.id === postId) {
             setSelectedPost({
               ...selectedPost,
@@ -287,17 +314,14 @@ const Index = () => {
 
   const handleRemoveImage = async (postId: number, imageIndex: number) => {
     try {
-      // Get the image URL to remove
       const post = posts.find(p => p.id === postId);
       if (!post || !post.images || !post.images[imageIndex]) return;
       
       const imageUrl = post.images[imageIndex];
       
-      // Extract the file name from the URL
       const urlParts = imageUrl.split('/');
       const fileName = urlParts[urlParts.length - 1];
       
-      // Only try to remove from storage if it appears to be a Supabase URL
       if (imageUrl.includes('supabase')) {
         const { error } = await supabase.storage
           .from('post_images')
@@ -308,13 +332,11 @@ const Index = () => {
         }
       }
       
-      // Update local state regardless of whether deletion from storage succeeded
       setPosts(prev => prev.map(post => {
         if (post.id === postId && post.images) {
           const updatedImages = [...post.images];
           updatedImages.splice(imageIndex, 1);
           
-          // Update selectedPost if it's the current post
           if (selectedPost && selectedPost.id === postId) {
             setSelectedPost({
               ...selectedPost,
@@ -359,6 +381,10 @@ const Index = () => {
   const handleSaveEdit = () => {
     if (!editedPost) return;
     
+    if (selectedClient) {
+      editedPost.clientId = selectedClient.id;
+    }
+    
     setPosts(prev => prev.map(post => 
       post.id === editedPost.id ? editedPost : post
     ));
@@ -375,25 +401,52 @@ const Index = () => {
     navigate('/all-posts');
   };
 
+  const handleBackToHome = () => {
+    navigate('/');
+  };
+
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white">
-      <div className="fixed top-0 right-0 w-1/3 h-1/3 bg-red-100 rounded-bl-full opacity-30 -z-10" />
-      <div className="fixed bottom-0 left-0 w-1/2 h-1/2 bg-red-100 rounded-tr-full opacity-20 -z-10" />
+    <div 
+      className="min-h-screen w-full bg-gradient-to-br from-red-50 to-white"
+      style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}10, white)` }}
+    >
+      <div 
+        className="fixed top-0 right-0 w-1/3 h-1/3 rounded-bl-full opacity-30 -z-10"
+        style={{ backgroundColor: `${themeColor}20` }}
+      />
+      <div 
+        className="fixed bottom-0 left-0 w-1/2 h-1/2 rounded-tr-full opacity-20 -z-10"
+        style={{ backgroundColor: `${themeColor}20` }}
+      />
       
       <div className="max-w-5xl mx-auto px-4 py-16">
         <TransitionLayout>
           {!isDetailView ? (
             <>
+              <div className="mb-6 flex items-center">
+                <Button
+                  onClick={handleBackToHome}
+                  variant="ghost"
+                  className="flex items-center text-gray-600 hover:text-gray-800"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Voltar ao início
+                </Button>
+              </div>
+              
               <div className="flex justify-between items-center mb-8">
                 <Header 
                   title="Agenda de Postagens" 
-                  subtitle="25/03 a 05/04 - Vereadora Neia Marques" 
-                  useRedTheme={true}
+                  subtitle={selectedClient ? selectedClient.name : settings.ownerName} 
+                  themeColor={themeColor}
+                  showSettings={true}
+                  onOpenSettings={() => setSettingsOpen(true)}
                 />
                 
                 <Button 
                   onClick={handleNavigateAllPosts}
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                  className="flex items-center gap-2 text-white"
+                  style={{ backgroundColor: themeColor, hover: `${themeColor}80` }}
                 >
                   <Calendar className="w-4 h-4" />
                   Todas as Postagens
@@ -414,7 +467,7 @@ const Index = () => {
                       type={post.postType}
                       text={post.text}
                       highlighted={true}
-                      useRedTheme={true}
+                      themeColor={themeColor}
                       completed={post.completed}
                       onSelect={() => handleSelectPost(post)}
                     />
@@ -426,7 +479,8 @@ const Index = () => {
             <div className="animate-fade-in">
               <button 
                 onClick={handleBackToCalendar}
-                className="mb-6 flex items-center text-red-600 hover:text-red-500 transition-colors"
+                className="mb-6 flex items-center transition-colors"
+                style={{ color: themeColor }}
               >
                 <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -434,16 +488,21 @@ const Index = () => {
                 Voltar ao calendário
               </button>
               
-              <div className="glass-card rounded-2xl p-8 shadow-xl">
+              <div className="glass-card rounded-2xl p-8 shadow-xl border"
+                style={{ borderColor: `${themeColor}40` }}
+              >
                 <div className="flex items-center justify-between mb-6">
                   {isEditing ? (
                     <Input 
                       value={editedPost?.date || ''}
                       onChange={(e) => setEditedPost(prev => prev ? {...prev, date: e.target.value} : null)}
-                      className="w-28 border-red-200 focus-visible:ring-red-400 date-badge-red text-white font-medium py-2 px-4 rounded-full"
+                      className="w-28 border-gray-200 focus-visible:ring-gray-400 text-white font-medium py-2 px-4 rounded-full"
+                      style={{ backgroundColor: themeColor }}
                     />
                   ) : (
-                    <div className="date-badge-red text-white font-medium py-2 px-4 rounded-full">
+                    <div className="text-white font-medium py-2 px-4 rounded-full"
+                      style={{ backgroundColor: themeColor }}
+                    >
                       {selectedPost.date} • {selectedPost.day}
                     </div>
                   )}
@@ -466,7 +525,7 @@ const Index = () => {
                     <Input 
                       value={editedPost?.title || ''}
                       onChange={(e) => setEditedPost(prev => prev ? {...prev, title: e.target.value} : null)}
-                      className="text-2xl font-bold border-red-200 focus-visible:ring-red-400"
+                      className="text-2xl font-bold border-gray-200 focus-visible:ring-gray-400"
                     />
                   ) : (
                     <h2 className="text-2xl md:text-3xl font-bold text-gray-800">
@@ -479,7 +538,8 @@ const Index = () => {
                       <Button
                         onClick={handleEditMode}
                         variant="outline"
-                        className="flex items-center gap-2 border-red-200 text-red-600 hover:bg-red-50"
+                        className="flex items-center gap-2"
+                        style={{ borderColor: `${themeColor}40`, color: themeColor }}
                       >
                         <Edit className="w-4 h-4" />
                         Editar
@@ -498,7 +558,8 @@ const Index = () => {
                         </Button>
                         <Button
                           onClick={handleSaveEdit}
-                          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white"
+                          className="flex items-center gap-2 text-white"
+                          style={{ backgroundColor: themeColor }}
                         >
                           <Save className="w-4 h-4" />
                           Salvar
@@ -516,7 +577,7 @@ const Index = () => {
                           <Checkbox 
                             id={`task-${selectedPost.id}`}
                             checked={selectedPost.completed}
-                            className="data-[state=checked]:bg-red-600 border-red-400"
+                            className="data-[state=checked]:bg-green-600 border-green-400"
                           />
                           <label 
                             htmlFor={`task-${selectedPost.id}`} 
@@ -538,7 +599,7 @@ const Index = () => {
                     <Textarea 
                       value={editedPost?.text || ''}
                       onChange={(e) => setEditedPost(prev => prev ? {...prev, text: e.target.value} : null)}
-                      className="min-h-[150px] border-red-100 focus-visible:ring-red-400 whitespace-pre-line text-gray-600 text-md leading-relaxed"
+                      className="min-h-[150px] border-gray-200 focus-visible:ring-gray-400 whitespace-pre-line text-gray-600 text-md leading-relaxed"
                     />
                   ) : (
                     <div className="whitespace-pre-line text-gray-600 text-md leading-relaxed">
@@ -548,7 +609,8 @@ const Index = () => {
                   {!isEditing && (
                     <Button
                       onClick={() => handleCopyText(selectedPost.text)}
-                      className="mt-4 bg-red-600 hover:bg-red-700 text-white"
+                      className="mt-4 text-white"
+                      style={{ backgroundColor: themeColor }}
                     >
                       <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
@@ -564,7 +626,7 @@ const Index = () => {
                   </h3>
                   <Textarea 
                     placeholder="Adicione informações específicas, links ou outras observações..."
-                    className="min-h-[100px] border-red-100 focus-visible:ring-red-400"
+                    className="min-h-[100px] border-gray-200 focus-visible:ring-gray-400"
                     value={isEditing ? (editedPost?.notes || '') : (selectedPost.notes || '')}
                     onChange={(e) => isEditing 
                       ? setEditedPost(prev => prev ? {...prev, notes: e.target.value} : null)
@@ -575,7 +637,7 @@ const Index = () => {
                 
                 <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
                   <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
-                    <Image className="w-5 h-5 mr-2 text-red-600" />
+                    <Image className="w-5 h-5 mr-2" style={{ color: themeColor }} />
                     Imagens da Publicação
                   </h3>
                   
@@ -602,8 +664,8 @@ const Index = () => {
                     )}
                   </div>
                   
-                  <div className="flex flex-col items-center p-4 border-2 border-dashed border-red-200 rounded-lg bg-red-50">
-                    <Upload className="w-8 h-8 text-red-600 mb-2" />
+                  <div className="flex flex-col items-center p-4 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                    <Upload className="w-8 h-8 mb-2" style={{ color: themeColor }} />
                     <p className="text-sm text-gray-600 mb-2">Clique para adicionar imagens ou arraste e solte aqui</p>
                     
                     <Input
@@ -617,7 +679,8 @@ const Index = () => {
                     />
                     <label
                       htmlFor={`file-upload-${selectedPost.id}`}
-                      className={`inline-flex items-center justify-center text-sm font-medium gap-2 ${isUploading ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'} text-white py-2 px-4 rounded-lg cursor-pointer transition-colors`}
+                      className={`inline-flex items-center justify-center text-sm font-medium gap-2 text-white py-2 px-4 rounded-lg cursor-pointer transition-colors ${isUploading ? 'bg-gray-400' : ''}`}
+                      style={{ backgroundColor: isUploading ? '#9CA3AF' : themeColor }}
                     >
                       {isUploading ? (
                         <>Carregando...</>
@@ -634,7 +697,8 @@ const Index = () => {
                 <div className="flex justify-center">
                   <Button
                     onClick={handleBackToCalendar}
-                    className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-xl transition-colors shadow-md"
+                    className="flex items-center justify-center gap-2 text-white font-medium py-3 px-6 rounded-xl transition-colors shadow-md"
+                    style={{ backgroundColor: themeColor }}
                   >
                     Salvar e Voltar
                   </Button>
@@ -644,8 +708,10 @@ const Index = () => {
           ) : null}
         </TransitionLayout>
         
+        <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+        
         <footer className="mt-16 text-center text-gray-500 text-sm">
-          <p>Agenda de Postagens • Vereadora Neia Marques</p>
+          <p>Agenda de Postagens • {settings.ownerName}</p>
         </footer>
       </div>
     </div>

@@ -11,7 +11,7 @@ interface CalendarEntryProps {
   text: string;
   className?: string;
   highlighted?: boolean;
-  useRedTheme?: boolean;
+  themeColor?: string;
   completed?: boolean;
   onSelect?: () => void;
 }
@@ -24,7 +24,7 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
   text,
   className,
   highlighted = false,
-  useRedTheme = false,
+  themeColor = "#dc2626",
   completed = false,
   onSelect
 }) => {
@@ -36,18 +36,21 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
         highlighted 
           ? "glass-card border-2" 
           : "bg-white/80 shadow-sm hover:shadow-lg border border-gray-100",
-        useRedTheme && highlighted ? "border-red-600" : highlighted ? "border-neia-blue" : "",
         completed ? "border-green-500" : "",
         className
       )}
+      style={{
+        borderColor: highlighted && !completed ? themeColor : ''
+      }}
       onClick={onSelect}
     >
       <div className="flex items-center mb-4">
         <div className={cn(
           "text-white font-medium text-sm py-1 px-3 rounded-full",
           "flex items-center justify-center",
-          useRedTheme ? "date-badge-red" : "date-badge"
-        )}>
+        )}
+        style={{ backgroundColor: themeColor }}
+        >
           <span>{date}</span>
           <span className="ml-1">•</span>
           <span className="ml-1">{day}</span>
@@ -76,10 +79,9 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
       </div>
       
       {highlighted && (
-        <div className={cn(
-          "mt-4 text-sm font-medium flex items-center",
-          useRedTheme ? "text-red-600" : "text-neia-blue"
-        )}>
+        <div className="mt-4 text-sm font-medium flex items-center"
+          style={{ color: themeColor }}
+        >
           <span>Ver detalhes</span>
           <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
