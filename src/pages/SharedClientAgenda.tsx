@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Lock, MessageCircle, Eye, EyeOff } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
+import { supabase, getFromLocalStorage } from '@/integrations/supabase/client';
 
 interface CalendarPost {
   id: number;
@@ -43,37 +43,87 @@ const SharedClientAgenda = () => {
       return;
     }
     
-    // Find the client
-    const foundClient = settings.clients.find(c => c.id === clientId);
-    if (foundClient) {
-      setClient(foundClient);
-      
-      // Check if there's a stored authentication for this client
-      const storedAuth = localStorage.getItem(`client_auth_${clientId}`);
-      if (storedAuth) {
-        setAuthenticated(true);
-        loadClientPosts(clientId);
+    const loadClientData = async () => {
+      try {
+        const { data: clientData, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', clientId)
+          .single();
+        
+        if (clientData) {
+          setClient(clientData);
+        } else {
+          const foundClient = settings.clients.find(c => c.id === clientId);
+          if (foundClient) {
+            setClient(foundClient);
+          }
+        }
+        
+        const storedAuth = localStorage.getItem(`client_auth_${clientId}`);
+        if (storedAuth) {
+          setAuthenticated(true);
+          loadClientPosts(clientId);
+        }
+      } catch (error) {
+        console.error('Error loading client:', error);
+        const foundClient = settings.clients.find(c => c.id === clientId);
+        if (foundClient) {
+          setClient(foundClient);
+        }
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+    
+    loadClientData();
   }, [clientId, settings.clients]);
   
-  const loadClientPosts = (clientId: string) => {
-    // Load the posts for this client
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+  const loadClientPosts = async (clientId: string) => {
+    try {
+      const { data: postsData, error } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('clientId', clientId);
       
-      // Sort posts by date
-      const sortedPosts = [...clientPosts].sort((a, b) => {
-        const dateA = new Date(a.date.split('/').reverse().join('/'));
-        const dateB = new Date(b.date.split('/').reverse().join('/'));
-        return dateA.getTime() - dateB.getTime();
-      });
-      
-      setPosts(sortedPosts);
+      if (postsData && postsData.length > 0) {
+        const sortedPosts = [...postsData].sort((a, b) => {
+          const dateA = new Date(a.date.split('/').reverse().join('/'));
+          const dateB = new Date(b.date.split('/').reverse().join('/'));
+          return dateA.getTime() - dateB.getTime();
+        });
+        
+        setPosts(sortedPosts);
+      } else {
+        const storedPosts = getFromLocalStorage('calendarPosts');
+        if (storedPosts) {
+          const clientPosts = storedPosts.filter((post: CalendarPost) => post.clientId === clientId);
+          
+          const sortedPosts = [...clientPosts].sort((a, b) => {
+            const dateA = new Date(a.date.split('/').reverse().join('/'));
+            const dateB = new Date(b.date.split('/').reverse().join('/'));
+            return dateA.getTime() - dateB.getTime();
+          });
+          
+          setPosts(sortedPosts);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading posts:', error);
+      const storedPosts = getFromLocalStorage('calendarPosts');
+      if (storedPosts) {
+        const clientPosts = storedPosts.filter((post: CalendarPost) => post.clientId === clientId);
+        setPosts(sortPostsByDate(clientPosts));
+      }
     }
+  };
+  
+  const sortPostsByDate = (postsToSort: CalendarPost[]): CalendarPost[] => {
+    return [...postsToSort].sort((a, b) => {
+      const dateA = new Date(a.date.split('/').reverse().join('/'));
+      const dateB = new Date(b.date.split('/').reverse().join('/'));
+      return dateA.getTime() - dateB.getTime();
+    });
   };
   
   const handleAuthenticate = () => {
@@ -84,10 +134,16 @@ const SharedClientAgenda = () => {
       localStorage.setItem(`client_auth_${clientId}`, 'true');
       loadClientPosts(clientId as string);
       setError('');
-      toast.success("Acesso autorizado!");
+      toast({
+        title: "Acesso autorizado!",
+        variant: "default",
+      });
     } else {
       setError('Senha incorreta. Por favor, tente novamente.');
-      toast.error("Senha incorreta");
+      toast({
+        title: "Senha incorreta",
+        variant: "destructive",
+      });
     }
   };
   

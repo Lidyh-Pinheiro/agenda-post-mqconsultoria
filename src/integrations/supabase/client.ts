@@ -1,30 +1,35 @@
 
-// This file provides a mock client for local storage usage
-// No actual connections are being made
+import { createClient } from '@supabase/supabase-js';
 
-// Mock client
-export const supabase = {
-  from: () => ({
-    select: () => ({
-      eq: () => ({ data: null, error: null }),
-      single: () => ({ data: null, error: null })
-    }),
-    insert: () => ({ data: null, error: null }),
-    update: () => ({ data: null, error: null }),
-    delete: () => ({ data: null, error: null })
-  }),
-  storage: {
-    from: () => ({
-      upload: async () => ({ data: { path: '' }, error: null }),
-      getPublicUrl: () => ({ data: { publicUrl: '' } }),
-      remove: async () => ({ data: null, error: null })
-    })
-  },
+// Real Supabase client with actual project credentials
+const supabaseUrl = 'https://jxhkpzdbfvefcapwgrwn.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4aGtwemRiZnZlZmNhcHdncnduIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxMjUxNTIsImV4cCI6MjA1ODcwMTE1Mn0.OTGNN7ul4kcRCheobvNOIAz6WIAjP2ZsGNp5MtVGsbo';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    signOut: async () => ({ error: null }),
-    signUp: async () => ({ data: null, error: null }),
-    signIn: async () => ({ data: null, error: null }),
-    onAuthStateChange: () => ({ data: null, subscription: { unsubscribe: () => {} } }),
-    updateUser: async () => ({ data: null, error: null })
+    persistSession: true,
+    autoRefreshToken: true,
+    storage: localStorage,
+  },
+});
+
+// Fallback to local storage if Supabase operations fail
+export const saveToLocalStorage = (key: string, data: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+    return true;
+  } catch (error) {
+    console.error('Error saving to localStorage:', error);
+    return false;
+  }
+};
+
+export const getFromLocalStorage = (key: string) => {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  } catch (error) {
+    console.error('Error getting from localStorage:', error);
+    return null;
   }
 };
