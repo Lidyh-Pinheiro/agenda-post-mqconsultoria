@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -8,6 +9,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
+import { fetchClientById, fetchClientPosts, savePost, deletePost } from '@/integrations/supabase/client';
 
 interface CalendarPost {
   id: number;
@@ -22,6 +25,7 @@ interface CalendarPost {
   notes?: string;
   images?: string[];
   clientId?: string;
+  socialNetworks?: string[];
 }
 
 const ClientPostDetail = () => {
@@ -34,70 +38,102 @@ const ClientPostDetail = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
+  const [deleteImageDialogOpen, setDeleteImageDialogOpen] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<number | null>(null);
   
+  // Carregar cliente
   useEffect(() => {
     if (!clientId) return;
     
-    const foundClient = settings.clients.find(c => c.id === clientId);
-    if (foundClient) {
-      setClient(foundClient);
-    } else {
-      navigate('/');
-    }
+    const loadClient = async () => {
+      try {
+        // Primeiro tenta encontrar o cliente no contexto
+        const contextClient = settings.clients.find(c => c.id === clientId);
+        
+        if (contextClient) {
+          setClient(contextClient);
+        } else {
+          // Se não encontrado no contexto, tenta buscar do Supabase
+          const supabaseClient = await fetchClientById(clientId);
+          if (supabaseClient) {
+            setClient(supabaseClient);
+          } else {
+            navigate('/');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading client:', error);
+        toast.error('Erro ao carregar dados do cliente');
+        navigate('/');
+      }
+    };
+    
+    loadClient();
   }, [clientId, settings.clients, navigate]);
   
+  // Carregar post
   useEffect(() => {
-    if (!postId) return;
+    if (!postId || !clientId) return;
     
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const foundPost = allPosts.find((p: CalendarPost) => p.id === parseInt(postId));
-      
-      if (foundPost) {
-        setPost(foundPost);
-        setEditedPost({...foundPost});
-      } else {
+    const loadPost = async () => {
+      try {
+        const clientPosts = await fetchClientPosts(clientId);
+        const foundPost = clientPosts.find(p => p.id === parseInt(postId));
+        
+        if (foundPost) {
+          setPost(foundPost);
+          setEditedPost({...foundPost});
+        } else {
+          navigate(`/client/${clientId}`);
+        }
+      } catch (error) {
+        console.error('Error loading post:', error);
+        toast.error('Erro ao carregar dados da postagem');
         navigate(`/client/${clientId}`);
       }
-    }
+    };
+    
+    loadPost();
   }, [postId, clientId, navigate]);
   
   const handleBack = () => {
     navigate(`/client/${clientId}`);
   };
   
-  const handleCompleteTask = (completed: boolean) => {
+  const handleCompleteTask = async (completed: boolean) => {
     if (!post) return;
     
-    const updatedPost = {...post, completed};
-    setPost(updatedPost);
-    
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const updatedPosts = allPosts.map((p: CalendarPost) => 
-        p.id === post.id ? updatedPost : p
-      );
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    try {
+      const updatedPost = {...post, completed};
+      const savedPost = await savePost(updatedPost);
+      
+      if (savedPost) {
+        setPost(savedPost);
+        toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada");
+      } else {
+        toast.error("Erro ao atualizar status da tarefa");
+      }
+    } catch (error) {
+      console.error('Error updating post status:', error);
+      toast.error("Erro ao atualizar status da tarefa");
     }
-    
-    toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada");
   };
   
-  const handleUpdateNotes = (notes: string) => {
+  const handleUpdateNotes = async (notes: string) => {
     if (!post) return;
     
-    const updatedPost = {...post, notes};
-    setPost(updatedPost);
-    
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const updatedPosts = allPosts.map((p: CalendarPost) => 
-        p.id === post.id ? updatedPost : p
-      );
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    try {
+      const updatedPost = {...post, notes};
+      const savedPost = await savePost(updatedPost);
+      
+      if (savedPost) {
+        setPost(savedPost);
+      } else {
+        toast.error("Erro ao salvar anotações");
+      }
+    } catch (error) {
+      console.error('Error updating notes:', error);
+      toast.error("Erro ao salvar anotações");
     }
   };
   
@@ -126,22 +162,18 @@ const ClientPostDetail = () => {
       const updatedImages = [...(post.images || []), ...uploadedImageUrls];
       const updatedPost = {...post, images: updatedImages};
       
-      setPost(updatedPost);
-      setEditedPost(updatedPost);
+      const savedPost = await savePost(updatedPost);
       
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        const updatedPosts = allPosts.map((p: CalendarPost) => 
-          p.id === post.id ? updatedPost : p
-        );
-        localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+      if (savedPost) {
+        setPost(savedPost);
+        setEditedPost(savedPost);
+        toast("Arquivo(s) adicionado(s) com sucesso!");
+      } else {
+        toast.error("Erro ao salvar imagens");
       }
-      
-      toast("Arquivo(s) adicionado(s) com sucesso!");
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast("Erro ao fazer upload do arquivo.", {
+      toast.error("Erro ao fazer upload do arquivo.", {
         description: "Tente novamente mais tarde."
       });
     } finally {
@@ -149,32 +181,36 @@ const ClientPostDetail = () => {
     }
   };
   
-  const handleRemoveImage = async (imageIndex: number) => {
-    if (!post || !post.images || !post.images[imageIndex]) return;
+  const openDeleteImageConfirmation = (imageIndex: number) => {
+    setImageToDelete(imageIndex);
+    setDeleteImageDialogOpen(true);
+  };
+  
+  const handleRemoveImage = async () => {
+    if (!post || !post.images || imageToDelete === null) return;
     
     try {
       const updatedImages = [...post.images];
-      updatedImages.splice(imageIndex, 1);
+      updatedImages.splice(imageToDelete, 1);
       
       const updatedPost = {...post, images: updatedImages};
-      setPost(updatedPost);
-      setEditedPost({...updatedPost});
+      const savedPost = await savePost(updatedPost);
       
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        const updatedPosts = allPosts.map((p: CalendarPost) => 
-          p.id === post.id ? updatedPost : p
-        );
-        localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+      if (savedPost) {
+        setPost(savedPost);
+        setEditedPost(savedPost);
+        toast("Imagem removida!");
+      } else {
+        toast.error("Erro ao remover imagem");
       }
-
-      toast("Imagem removida!");
     } catch (error) {
       console.error('Error removing image:', error);
-      toast("Erro ao remover imagem.", {
+      toast.error("Erro ao remover imagem.", {
         description: "Tente novamente mais tarde."
       });
+    } finally {
+      setDeleteImageDialogOpen(false);
+      setImageToDelete(null);
     }
   };
   
@@ -196,25 +232,25 @@ const ClientPostDetail = () => {
     setEditedPost(post);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editedPost) return;
     
-    const updatedPost = {...editedPost};
-    setPost(updatedPost);
-    setIsEditing(false);
-    
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const updatedPosts = allPosts.map((p: CalendarPost) => 
-        p.id === updatedPost.id ? updatedPost : p
-      );
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    try {
+      const savedPost = await savePost(editedPost);
+      
+      if (savedPost) {
+        setPost(savedPost);
+        setIsEditing(false);
+        toast("Alterações salvas com sucesso!", {
+          duration: 2000,
+        });
+      } else {
+        toast.error("Erro ao salvar alterações");
+      }
+    } catch (error) {
+      console.error('Error saving post:', error);
+      toast.error("Erro ao salvar alterações");
     }
-    
-    toast("Alterações salvas com sucesso!", {
-      duration: 2000,
-    });
   };
   
   if (!client || !post) {
@@ -418,10 +454,10 @@ const ClientPostDetail = () => {
                         className="w-full h-40 object-cover rounded-lg border border-gray-200" 
                       />
                       <button
-                        onClick={() => handleRemoveImage(index)}
+                        onClick={() => openDeleteImageConfirmation(index)}
                         className="absolute top-2 right-2 bg-white rounded-full p-1 opacity-100 transition-opacity"
                       >
-                        <X className="w-4 h-4 text-red-500" />
+                        <Trash2 className="w-4 h-4 text-red-500" />
                       </button>
                     </div>
                   ))}
@@ -452,6 +488,14 @@ const ClientPostDetail = () => {
           <p>Agenda de Postagens • {settings.ownerName}</p>
         </footer>
       </div>
+
+      <DeleteConfirmDialog
+        open={deleteImageDialogOpen}
+        onOpenChange={setDeleteImageDialogOpen}
+        onConfirm={handleRemoveImage}
+        title="Confirmar exclusão"
+        description="Tem certeza que deseja excluir esta imagem? Esta ação não pode ser desfeita."
+      />
     </div>
   );
 };

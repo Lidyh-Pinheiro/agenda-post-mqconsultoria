@@ -63,7 +63,17 @@ export const fetchClients = async () => {
       .select('*');
     
     if (error) throw error;
-    return data || [];
+    
+    // Map database fields to the expected client format
+    const formattedClients = data?.map(client => ({
+      id: client.id,
+      name: client.name,
+      themeColor: client.themecolor,
+      password: client.password || '',
+      createdAt: client.created_at
+    })) || [];
+    
+    return formattedClients;
   } catch (error) {
     console.error('Error fetching clients:', error);
     return [];
@@ -82,7 +92,27 @@ export const fetchClientPosts = async (clientId: string) => {
       .order('date');
     
     if (error) throw error;
-    return data || [];
+    
+    // Map database fields to the expected post format
+    const formattedPosts = data?.map(post => ({
+      id: post.id,
+      date: post.date,
+      day: post.day,
+      dayOfWeek: post.dayofweek,
+      title: post.title,
+      type: post.type,
+      postType: post.posttype,
+      text: post.text,
+      completed: post.completed || false,
+      notes: post.notes || '',
+      images: post.images || [],
+      clientId: post.clientid,
+      socialNetworks: post.socialnetworks || [],
+      month: post.month,
+      year: post.year
+    })) || [];
+    
+    return formattedPosts;
   } catch (error) {
     console.error(`Error fetching posts for client ${clientId}:`, error);
     return [];
@@ -94,20 +124,62 @@ export const fetchClientPosts = async (clientId: string) => {
  */
 export const savePost = async (post: any) => {
   try {
+    // Map the post to match database column names
+    const dbPost = {
+      id: post.id,
+      clientid: post.clientId || post.clientid,
+      date: post.date,
+      day: post.day,
+      dayofweek: post.dayOfWeek || post.dayofweek,
+      title: post.title,
+      type: post.type,
+      posttype: post.postType || post.posttype,
+      text: post.text,
+      completed: post.completed || false,
+      notes: post.notes || '',
+      images: post.images || [],
+      socialnetworks: post.socialNetworks || post.socialnetworks || [],
+      month: post.month,
+      year: post.year
+    };
+    
     // If post has an id, update it, otherwise insert a new one
     const { data, error } = post.id ? 
       await supabase
         .from('posts')
-        .update(post)
+        .update(dbPost)
         .eq('id', post.id)
         .select() :
       await supabase
         .from('posts')
-        .insert(post)
+        .insert(dbPost)
         .select();
     
     if (error) throw error;
-    return data?.[0] || null;
+    
+    // Map database response back to the expected format
+    if (data && data.length > 0) {
+      const savedPost = {
+        id: data[0].id,
+        date: data[0].date,
+        day: data[0].day,
+        dayOfWeek: data[0].dayofweek,
+        title: data[0].title,
+        type: data[0].type,
+        postType: data[0].posttype,
+        text: data[0].text,
+        completed: data[0].completed || false,
+        notes: data[0].notes || '',
+        images: data[0].images || [],
+        clientId: data[0].clientid,
+        socialNetworks: data[0].socialnetworks || [],
+        month: data[0].month,
+        year: data[0].year
+      };
+      return savedPost;
+    }
+    
+    return null;
   } catch (error) {
     console.error('Error saving post:', error);
     return null;
@@ -150,7 +222,14 @@ export const fetchClientById = async (clientId: string, password?: string) => {
       return null;
     }
     
-    return data;
+    // Map database fields to the expected client format
+    return {
+      id: data.id,
+      name: data.name,
+      themeColor: data.themecolor,
+      password: data.password || '',
+      createdAt: data.created_at
+    };
   } catch (error) {
     console.error(`Error fetching client ${clientId}:`, error);
     return null;
@@ -162,20 +241,40 @@ export const fetchClientById = async (clientId: string, password?: string) => {
  */
 export const saveClient = async (client: any) => {
   try {
+    // Map the client to match database column names
+    const dbClient = {
+      id: client.id,
+      name: client.name,
+      themecolor: client.themeColor,
+      password: client.password || ''
+    };
+    
     // If client has an id, update it, otherwise insert a new one
     const { data, error } = client.id ? 
       await supabase
         .from('clients')
-        .update(client)
+        .update(dbClient)
         .eq('id', client.id)
         .select() :
       await supabase
         .from('clients')
-        .insert(client)
+        .insert(dbClient)
         .select();
     
     if (error) throw error;
-    return data?.[0] || null;
+    
+    // Map database response back to the expected format
+    if (data && data.length > 0) {
+      return {
+        id: data[0].id,
+        name: data[0].name,
+        themeColor: data[0].themecolor,
+        password: data[0].password || '',
+        createdAt: data[0].created_at
+      };
+    }
+    
+    return null;
   } catch (error) {
     console.error('Error saving client:', error);
     return null;

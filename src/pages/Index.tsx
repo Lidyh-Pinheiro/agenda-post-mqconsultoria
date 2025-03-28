@@ -34,6 +34,13 @@ interface CalendarPost {
 interface AddClientModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  newClientName: string;
+  setNewClientName: React.Dispatch<React.SetStateAction<string>>;
+  newClientColor: string;
+  setNewClientColor: React.Dispatch<React.SetStateAction<string>>;
+  newClientPassword: string;
+  setNewClientPassword: React.Dispatch<React.SetStateAction<string>>;
+  onAddClient: () => void;
 }
 
 const Index = () => {
@@ -250,18 +257,6 @@ const Index = () => {
     </div>
   );
 };
-
-interface AddClientModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  newClientName: string;
-  setNewClientName: React.Dispatch<React.SetStateAction<string>>;
-  newClientColor: string;
-  setNewClientColor: React.Dispatch<React.SetStateAction<string>>;
-  newClientPassword: string;
-  setNewClientPassword: React.Dispatch<React.SetStateAction<string>>;
-  onAddClient: () => void;
-}
 
 const AddClientModal: React.FC<AddClientModalProps> = ({
   open,
