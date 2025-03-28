@@ -20,6 +20,15 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from "@/components/ui/form";
 
 interface AddPostModalProps {
   open: boolean;
@@ -45,6 +54,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [postType, setPostType] = useState('Feed');
+  const [includeStories, setIncludeStories] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
 
   const handleSave = () => {
@@ -58,12 +68,15 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     const formattedDate = format(selectedDate, 'dd/MM');
     const dayOfWeek = selectedDate.getDay();
     
+    // Create the type string based on whether Stories is included
+    const typeString = includeStories ? `${postType} + Stories` : postType;
+    
     onSave({
       date: formattedDate,
       day: dayNames[dayOfWeek],
       dayOfWeek: shortDayNames[dayOfWeek],
       title: title,
-      type: `${postType} + Stories`,
+      type: typeString,
       postType: postType,
       text: text
     });
@@ -72,6 +85,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     setTitle('');
     setText('');
     setPostType('Feed');
+    setIncludeStories(false);
     onOpenChange(false);
   };
 
@@ -131,6 +145,8 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
                 onChange={(e) => setPostType(e.target.value)}
               >
                 <option value="Feed">Feed</option>
+                <option value="Stories">Stories</option>
+                <option value="Feed + Stories">Feed + Stories</option>
                 <option value="Registro">Registro</option>
                 <option value="Vídeo">Vídeo</option>
                 <option value="Foto">Foto</option>
@@ -140,6 +156,24 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
               </select>
             </div>
           </div>
+          
+          {postType !== "Stories" && postType !== "Feed + Stories" && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <div className="text-right text-sm font-medium">
+                Incluir Stories
+              </div>
+              <div className="col-span-3 flex items-center space-x-2">
+                <Checkbox 
+                  id="include-stories" 
+                  checked={includeStories}
+                  onCheckedChange={(checked) => setIncludeStories(!!checked)}
+                />
+                <Label htmlFor="include-stories" className="text-sm font-normal">
+                  Adicionar também aos Stories
+                </Label>
+              </div>
+            </div>
+          )}
           
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="post-title" className="text-right text-sm font-medium">
