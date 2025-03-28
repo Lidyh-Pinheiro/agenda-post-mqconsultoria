@@ -18,61 +18,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-// Helper function to check if Supabase tables exist
-export const checkSupabaseTables = async () => {
-  try {
-    // Try to query the calendar_posts table
-    const { data, error } = await supabase
-      .from('calendar_posts')
-      .select('id')
-      .limit(1);
-      
-    if (error) {
-      console.error('Error checking Supabase tables:', error);
-      return false;
-    }
-    
-    console.log('Supabase tables check successful');
-    return true;
-  } catch (error) {
-    console.error('Failed to check Supabase tables:', error);
-    return false;
-  }
-};
-
-// Helper to create a storage bucket if it doesn't exist
-export const ensureStorageBucketExists = async () => {
-  try {
-    // Check if bucket exists first
-    const { data: buckets, error: listError } = await supabase
-      .storage
-      .listBuckets();
-      
-    const bucketExists = buckets?.some(bucket => bucket.name === 'post_images');
-    
-    if (!bucketExists) {
-      console.log('Creating post_images bucket...');
-      const { error } = await supabase
-        .storage
-        .createBucket('post_images', {
-          public: true,
-          fileSizeLimit: 10485760, // 10MB
-          allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-        });
-        
-      if (error) {
-        console.error('Error creating storage bucket:', error);
-        return false;
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error ensuring storage bucket exists:', error);
-    return false;
-  }
-};
-
 // Function to save posts to localStorage as a fallback
 export const savePostsToLocalStorage = (posts, clientId) => {
   try {
@@ -114,3 +59,89 @@ export const getPostsFromLocalStorage = (clientId) => {
   }
 };
 
+// Function to get all posts from localStorage
+export const getAllPostsFromLocalStorage = () => {
+  try {
+    const postsJSON = localStorage.getItem('calendarPosts');
+    if (!postsJSON) return [];
+    
+    return JSON.parse(postsJSON);
+  } catch (error) {
+    console.error('Error getting all posts from localStorage:', error);
+    return [];
+  }
+};
+
+// Function to save a single post to localStorage
+export const savePostToLocalStorage = (post) => {
+  try {
+    const allPosts = getAllPostsFromLocalStorage();
+    
+    // Check if post already exists (by id)
+    const existingPostIndex = allPosts.findIndex(p => p.id === post.id);
+    
+    if (existingPostIndex >= 0) {
+      // Update existing post
+      allPosts[existingPostIndex] = post;
+    } else {
+      // Add new post
+      allPosts.push(post);
+    }
+    
+    localStorage.setItem('calendarPosts', JSON.stringify(allPosts));
+    return true;
+  } catch (error) {
+    console.error('Error saving post to localStorage:', error);
+    return false;
+  }
+};
+
+// Function to delete a post from localStorage
+export const deletePostFromLocalStorage = (postId) => {
+  try {
+    const allPosts = getAllPostsFromLocalStorage();
+    const filteredPosts = allPosts.filter(post => post.id !== postId);
+    localStorage.setItem('calendarPosts', JSON.stringify(filteredPosts));
+    return true;
+  } catch (error) {
+    console.error('Error deleting post from localStorage:', error);
+    return false;
+  }
+};
+
+// Helper function to check if Supabase tables exist - replaced with simple error check
+export const checkSupabaseTables = async () => {
+  try {
+    // Try a simple query to see if Supabase is accessible
+    const { data, error } = await supabase.from('calendar_posts').select('count');
+    
+    // If there's an error, Supabase is likely not set up correctly
+    if (error) {
+      console.warn('Supabase not properly configured, falling back to localStorage');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.warn('Failed to check Supabase configuration:', error);
+    return false;
+  }
+};
+
+// Helper to create a storage bucket if it doesn't exist - replaced with simple availability check
+export const ensureStorageBucketExists = async () => {
+  try {
+    // Simple check if storage is accessible
+    const { data, error } = await supabase.storage.getBucket('post_images');
+    
+    if (error) {
+      console.warn('Supabase storage not properly configured');
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.warn('Supabase storage not accessible:', error);
+    return false;
+  }
+};

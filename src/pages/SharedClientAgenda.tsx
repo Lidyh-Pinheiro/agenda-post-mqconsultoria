@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { Printer, Copy, Share2, Lock, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { supabase, getPostsFromLocalStorage } from '@/integrations/supabase/client';
+import { getPostsFromLocalStorage } from '@/integrations/supabase/client';
 
 interface CalendarPost {
   id: string;
@@ -78,52 +79,12 @@ const SharedClientAgenda = () => {
 
   const loadPosts = async (foundClient: Client) => {
     try {
-      // First try to fetch from Supabase
-      const { data: postsData, error: postsError } = await supabase
-        .from('calendar_posts')
-        .select('*')
-        .eq('client_id', clientId);
-        
-      if (postsError) {
-        throw postsError;
-      }
-      
-      console.log('Posts from Supabase:', postsData);
-      
-      if (!postsData || postsData.length === 0) {
-        console.log('No posts found in Supabase for client ID:', clientId);
-        
-        // Fall back to localStorage
-        const clientPosts = getPostsFromLocalStorage(clientId);
-        console.log('Posts from localStorage:', clientPosts);
-        
-        if (clientPosts.length > 0) {
-          // Process and sort posts from localStorage
-          const sortedPosts = [...clientPosts].sort((a, b) => {
-            try {
-              const dateA = parseDate(a.date);
-              const dateB = parseDate(b.date);
-              return dateA.getTime() - dateB.getTime();
-            } catch (err) {
-              console.error("Date parsing error:", err, a.date, b.date);
-              return 0;
-            }
-          });
-          
-          setPosts(sortedPosts);
-        } else {
-          setPosts([]);
-        }
-      } else {
-        await processPostsData(postsData);
-      }
-    } catch (error) {
-      console.error('Error loading posts:', error);
-      
-      // Fall back to localStorage on error
+      // Get client posts from localStorage
       const clientPosts = getPostsFromLocalStorage(clientId);
+      console.log('Posts from localStorage:', clientPosts);
       
       if (clientPosts.length > 0) {
+        // Process and sort posts from localStorage
         const sortedPosts = [...clientPosts].sort((a, b) => {
           try {
             const dateA = parseDate(a.date);
@@ -139,56 +100,11 @@ const SharedClientAgenda = () => {
       } else {
         setPosts([]);
       }
+    } catch (error) {
+      console.error('Error loading posts:', error);
+      setPosts([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const processPostsData = async (postsData: any[]) => {
-    try {
-      // For each post, fetch its images and social networks
-      const enhancedPosts = await Promise.all(
-        postsData.map(async (post) => {
-          // Fetch images for this post
-          const { data: imagesData } = await supabase
-            .from('post_images')
-            .select('url')
-            .eq('post_id', post.id);
-            
-          // Fetch social networks for this post
-          const { data: networksData } = await supabase
-            .from('post_social_networks')
-            .select('network_name')
-            .eq('post_id', post.id);
-                
-          return {
-            ...post,
-            id: post.id,
-            clientId: post.client_id,
-            dayOfWeek: post.day_of_week,
-            postType: post.post_type,
-            images: imagesData ? imagesData.map(img => img.url) : [],
-            socialNetworks: networksData ? networksData.map(net => net.network_name) : []
-          };
-        })
-      );
-          
-      // Sort posts by date
-      const sortedPosts = [...enhancedPosts].sort((a, b) => {
-        try {
-          const dateA = parseDate(a.date);
-          const dateB = parseDate(b.date);
-          return dateA.getTime() - dateB.getTime();
-        } catch (err) {
-          console.error("Date parsing error:", err, a.date, b.date);
-          return 0;
-        }
-      });
-          
-      setPosts(sortedPosts);
-    } catch (error) {
-      console.error('Error processing posts data:', error);
-      toast.error('Erro ao processar dados das postagens');
     }
   };
 
