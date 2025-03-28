@@ -2,10 +2,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Lock, Printer } from 'lucide-react';
+import { Lock, Printer, MessageCircle, Instagram, Facebook } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CalendarEntry from '@/components/CalendarEntry';
 import html2canvas from 'html2canvas';
 
@@ -34,7 +33,6 @@ interface CalendarPost {
 
 const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, posts = [] }) => {
   const { settings, generateClientShareLink } = useSettings();
-  const [activeTab, setActiveTab] = useState<string>("link");
   const printableAreaRef = useRef<HTMLDivElement>(null);
   const [clientPosts, setClientPosts] = useState<CalendarPost[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -63,10 +61,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   }, [clientId, open, generateClientShareLink]);
   
   useEffect(() => {
-    if (activeTab === "preview" && open && printableAreaRef.current && !generatedImage) {
+    if (open && printableAreaRef.current && !generatedImage) {
       generateImage();
     }
-  }, [activeTab, open]);
+  }, [open]);
   
   const generateImage = async () => {
     if (!printableAreaRef.current) return;
@@ -82,12 +80,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
     } catch (error) {
       console.error('Erro ao gerar imagem:', error);
     }
-  };
-  
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareUrl);
-    toast.success('Link copiado para a área de transferência');
-    onOpenChange(false);
   };
   
   const printContent = () => {
@@ -335,96 +327,106 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            Compartilhar Agenda de {client.name}
+            Área de Cliente - {client.name}
           </DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="link">Link</TabsTrigger>
-            <TabsTrigger value="preview">Visualização</TabsTrigger>
-          </TabsList>
+        <div className="space-y-4 py-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Visualização da Agenda</h3>
+            <Button 
+              onClick={printContent}
+              variant="outline" 
+              size="sm"
+              className="flex items-center gap-1"
+            >
+              <Printer className="h-4 w-4" />
+              <span>Imprimir</span>
+            </Button>
+          </div>
           
-          <TabsContent value="link" className="p-4">
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-2">
-                Compartilhe este link para acesso à agenda do cliente. O cliente precisará da senha configurada para visualizar as postagens.
-              </p>
-              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border mt-4">
-                <div className="flex-shrink-0 text-gray-400">
-                  <Lock className="w-4 h-4" />
+          <div 
+            className="overflow-y-auto max-h-[400px] p-4 bg-white border rounded-md"
+            style={{ minHeight: '280px' }}
+          >
+            <div ref={printableAreaRef} className="space-y-4">
+              {clientPosts && clientPosts.length > 0 ? (
+                clientPosts.map((post, index) => (
+                  <div key={post.id} className="agenda-card">
+                    <CalendarEntry
+                      date={post.date}
+                      day={post.dayOfWeek}
+                      title={post.title}
+                      type={post.postType}
+                      text={post.text}
+                      highlighted={true}
+                      themeColor={themeColor}
+                      completed={post.completed}
+                      socialNetworks={post.socialNetworks}
+                      preview={true}
+                      hideIcons={true}
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Nenhuma postagem disponível para visualização
                 </div>
-                <input 
-                  type="text" 
-                  readOnly 
-                  value={shareUrl} 
-                  className="flex-1 bg-transparent border-0 focus:outline-none text-sm"
-                />
-              </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="mt-6 border-t pt-6">
+            <div className="mb-2">
+              <h3 className="text-lg font-medium">Compartilhamento</h3>
+              <p className="text-sm text-gray-500 mt-1">Opções de compartilhamento (em breve)</p>
             </div>
             
-            <div className="grid grid-cols-1 gap-4 mt-6">
-              <Button 
-                onClick={printContent}
-                variant="outline" 
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <Button
+                variant="outline"
+                size="sm"
                 className="flex items-center justify-center gap-2"
+                disabled
               >
-                <Printer className="w-4 h-4" />
-                Imprimir
+                <MessageCircle className="w-4 h-4 text-green-500" />
+                <span className="text-sm">WhatsApp</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-2"
+                disabled
+              >
+                <Instagram className="w-4 h-4 text-pink-500" />
+                <span className="text-sm">Instagram</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-2"
+                disabled
+              >
+                <Facebook className="w-4 h-4 text-blue-500" />
+                <span className="text-sm">Facebook</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-2"
+                disabled
+              >
+                <Lock className="w-4 h-4 text-gray-500" />
+                <span className="text-sm">Link Seguro</span>
               </Button>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="preview" className="pt-2">
-            <div className="mb-4 flex justify-between items-center">
-              <h3 className="text-lg font-medium">Prévia da Agenda</h3>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={printContent}
-                  variant="outline" 
-                  size="sm"
-                  className="flex items-center gap-1"
-                >
-                  <Printer className="h-4 w-4" />
-                  <span className="hidden sm:inline">Imprimir</span>
-                </Button>
-              </div>
-            </div>
-            
-            <div 
-              className="overflow-y-auto max-h-[500px] p-4 bg-white border rounded-md"
-              style={{ minHeight: '280px' }}
-            >
-              <div ref={printableAreaRef} className="space-y-4">
-                {clientPosts && clientPosts.length > 0 ? (
-                  clientPosts.map((post, index) => (
-                    <div key={post.id} className="agenda-card">
-                      <CalendarEntry
-                        date={post.date}
-                        day={post.dayOfWeek}
-                        title={post.title}
-                        type={post.postType}
-                        text={post.text}
-                        highlighted={true}
-                        themeColor={themeColor}
-                        completed={post.completed}
-                        socialNetworks={post.socialNetworks}
-                        preview={true}
-                        hideIcons={true}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    Nenhuma postagem disponível para visualização
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
         
-        <DialogFooter className="sm:justify-center mt-4">
+        <DialogFooter className="sm:justify-center">
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
