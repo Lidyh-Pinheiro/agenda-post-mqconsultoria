@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -36,6 +35,8 @@ interface SettingsContextType {
   generateClientShareLink: (clientId: string) => string;
   updateClientPostsCount: (clientId: string, count: number) => void;
   shareClient: (clientId: string) => void;
+  showAccountSettings: boolean;
+  setShowAccountSettings: (show: boolean) => void;
 }
 
 const defaultSettings: Settings = {
@@ -58,6 +59,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   useEffect(() => {
     const storedSettings = localStorage.getItem('appSettings');
@@ -206,7 +208,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         getSelectedClient,
         generateClientShareLink,
         updateClientPostsCount,
-        shareClient
+        shareClient,
+        showAccountSettings,
+        setShowAccountSettings
       }}
     >
       {children}

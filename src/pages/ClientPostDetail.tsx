@@ -3,9 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { ArrowLeft, Calendar, Image, Upload, Check, X, Save } from 'lucide-react';
+import { ArrowLeft, Calendar, Image, Upload, Check, X, Save, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,6 +34,8 @@ const ClientPostDetail = () => {
   const [client, setClient] = useState<Client | null>(null);
   const [post, setPost] = useState<CalendarPost | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
   
   // Find the client by ID
   useEffect(() => {
@@ -57,6 +61,7 @@ const ClientPostDetail = () => {
       
       if (foundPost) {
         setPost(foundPost);
+        setEditedPost({...foundPost});
       } else {
         // Post not found, redirect back
         navigate(`/client/${clientId}`);
@@ -141,6 +146,7 @@ const ClientPostDetail = () => {
       const updatedPost = {...post, images: updatedImages};
       
       setPost(updatedPost);
+      setEditedPost(updatedPost);
       
       // Update in localStorage
       const storedPosts = localStorage.getItem('calendarPosts');
@@ -190,6 +196,7 @@ const ClientPostDetail = () => {
       
       const updatedPost = {...post, images: updatedImages};
       setPost(updatedPost);
+      setEditedPost({...updatedPost});
       
       // Update in localStorage
       const storedPosts = localStorage.getItem('calendarPosts');
@@ -218,6 +225,38 @@ const ClientPostDetail = () => {
     toast("Texto copiado para a área de transferência!", {
       description: "Agora é só colar onde você precisar.",
       duration: 3000,
+    });
+  };
+
+  const handleEditMode = () => {
+    setIsEditing(true);
+    setEditedPost(post ? {...post} : null);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedPost(post);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editedPost) return;
+    
+    const updatedPost = {...editedPost};
+    setPost(updatedPost);
+    setIsEditing(false);
+    
+    // Update in localStorage
+    const storedPosts = localStorage.getItem('calendarPosts');
+    if (storedPosts) {
+      const allPosts = JSON.parse(storedPosts);
+      const updatedPosts = allPosts.map((p: CalendarPost) => 
+        p.id === updatedPost.id ? updatedPost : p
+      );
+      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    }
+    
+    toast("Alterações salvas com sucesso!", {
+      duration: 2000,
     });
   };
   
@@ -304,9 +343,54 @@ const ClientPostDetail = () => {
               </div>
             </div>
             
-            <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-6">
-              {post.title}
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              {isEditing ? (
+                <Input 
+                  value={editedPost?.title || ''}
+                  onChange={(e) => setEditedPost(prev => prev ? {...prev, title: e.target.value} : null)}
+                  className="text-2xl font-bold border-gray-200 focus-visible:ring-gray-400"
+                />
+              ) : (
+                <h2 className="text-2xl md:text-3xl font-semibold text-gray-800 mb-6">
+                  {post.title}
+                </h2>
+              )}
+              
+              <div className="flex items-center space-x-4">
+                {!isEditing && (
+                  <Button
+                    onClick={handleEditMode}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    style={{ borderColor: `${client.themeColor}40`, color: client.themeColor }}
+                  >
+                    <Edit className="w-4 h-4" />
+                    Editar
+                  </Button>
+                )}
+                
+                {isEditing && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleCancelEdit}
+                      variant="outline"
+                      className="flex items-center gap-2 border-gray-200"
+                    >
+                      <X className="w-4 h-4" />
+                      Cancelar
+                    </Button>
+                    <Button
+                      onClick={handleSaveEdit}
+                      className="flex items-center gap-2 text-white"
+                      style={{ backgroundColor: client.themeColor }}
+                    >
+                      <Save className="w-4 h-4" />
+                      Salvar
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
             
             <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
@@ -316,17 +400,26 @@ const ClientPostDetail = () => {
                 />
                 Texto da Publicação
               </h3>
-              <div className="whitespace-pre-line text-gray-600 text-md leading-relaxed">
-                {post.text}
-                <Button
-                  onClick={() => handleCopyText(post.text)}
-                  variant="outline"
-                  size="sm"
-                  className="mt-4 text-xs"
-                >
-                  Copiar texto
-                </Button>
-              </div>
+              
+              {isEditing ? (
+                <Textarea 
+                  value={editedPost?.text || ''}
+                  onChange={(e) => setEditedPost(prev => prev ? {...prev, text: e.target.value} : null)}
+                  className="min-h-[150px] text-gray-600 leading-relaxed"
+                />
+              ) : (
+                <div className="whitespace-pre-line text-gray-600 text-md leading-relaxed">
+                  {post.text}
+                  <Button
+                    onClick={() => handleCopyText(post.text)}
+                    variant="outline"
+                    size="sm"
+                    className="mt-4 text-xs"
+                  >
+                    Copiar texto
+                  </Button>
+                </div>
+              )}
             </div>
             
             <div className="bg-white/70 backdrop-blur-sm rounded-xl p-6 mb-6 border border-gray-100">
@@ -369,7 +462,7 @@ const ClientPostDetail = () => {
                       />
                       <button
                         onClick={() => handleRemoveImage(index)}
-                        className="absolute top-2 right-2 bg-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 opacity-100 transition-opacity"
                       >
                         <X className="w-4 h-4 text-red-500" />
                       </button>
@@ -382,6 +475,18 @@ const ClientPostDetail = () => {
                   <p>Nenhum arquivo anexado</p>
                 </div>
               )}
+            </div>
+            
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-4">
+                Anotações
+              </h3>
+              <Textarea 
+                value={post.notes}
+                onChange={(e) => handleUpdateNotes(e.target.value)}
+                placeholder="Adicionar notas sobre esta postagem..."
+                className="min-h-[100px]"
+              />
             </div>
           </div>
         </TransitionLayout>
