@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { supabase } from '@/integrations/supabase/client';
+import { firebaseDB } from '@/integrations/firebase/client';
 import { 
   Table, 
   TableBody, 
@@ -39,6 +40,7 @@ interface CalendarPost {
   images?: string[];
   clientId?: string;
   socialNetworks?: string[];
+  time?: string;
 }
 
 const ClientAgenda = () => {
@@ -59,6 +61,7 @@ const ClientAgenda = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [editingPost, setEditingPost] = useState<CalendarPost | null>(null);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     if (!clientId) return;
@@ -72,29 +75,62 @@ const ClientAgenda = () => {
   }, [clientId, settings.clients, navigate]);
   
   useEffect(() => {
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts && clientId) {
-      const allPosts = JSON.parse(storedPosts);
-      const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-      setPosts(sortPostsByDate(clientPosts));
-    }
+    const loadPosts = async () => {
+      try {
+        setLoading(true);
+        const allPosts = await firebaseDB.getPosts();
+        if (allPosts) {
+          const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+          setPosts(sortPostsByDate(clientPosts));
+        } else {
+          setPosts([]);
+        }
+      } catch (error) {
+        console.error("Error loading posts:", error);
+        
+        const storedPosts = localStorage.getItem('calendarPosts');
+        if (storedPosts) {
+          const allPosts = JSON.parse(storedPosts);
+          const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+          setPosts(sortPostsByDate(clientPosts));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadPosts();
+    
+    const unsubscribe = firebaseDB.subscribeToPosts((allPosts) => {
+      if (allPosts) {
+        const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+        setPosts(sortPostsByDate(clientPosts));
+      }
+    });
+    
+    return () => unsubscribe();
   }, [clientId]);
   
   useEffect(() => {
     if (posts.length > 0 || postToDelete !== null) {
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        
-        const otherPosts = allPosts.filter((p: CalendarPost) => 
-          p.clientId !== clientId || 
-          (postToDelete !== null && p.id === postToDelete)
-        );
-        
-        localStorage.setItem('calendarPosts', JSON.stringify([...otherPosts, ...posts]));
-      } else {
-        localStorage.setItem('calendarPosts', JSON.stringify(posts));
-      }
+      const savePosts = async () => {
+        try {
+          const allPosts = await firebaseDB.getPosts() || [];
+          
+          const otherPosts = allPosts.filter((p: CalendarPost) => 
+            p.clientId !== clientId || 
+            (postToDelete !== null && p.id === postToDelete)
+          );
+          
+          await firebaseDB.setPosts([...otherPosts, ...posts]);
+          
+          localStorage.setItem('calendarPosts', JSON.stringify([...otherPosts, ...posts]));
+        } catch (error) {
+          console.error("Error saving posts:", error);
+        }
+      };
+      
+      savePosts();
     }
   }, [posts, clientId, postToDelete]);
   
@@ -168,16 +204,19 @@ const ClientAgenda = () => {
     setDeleteDialogOpen(true);
   };
   
-  const handleDeletePost = () => {
+  const handleDeletePost = async () => {
     if (postToDelete === null) return;
     
     setPosts(prev => prev.filter(post => post.id !== postToDelete));
     
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
+    try {
+      const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.filter((p: CalendarPost) => p.id !== postToDelete);
+      await firebaseDB.setPosts(updatedPosts);
+      
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    } catch (error) {
+      console.error("Error deleting post:", error);
     }
     
     setDeleteDialogOpen(false);
@@ -287,10 +326,13 @@ const ClientAgenda = () => {
     });
   };
   
-  if (!client) {
+  if (!client || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p>Carregando...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-800 mx-auto"></div>
+          <p className="mt-4 text-gray-700">Carregando agenda...</p>
+        </div>
       </div>
     );
   }
@@ -360,7 +402,7 @@ const ClientAgenda = () => {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <CalendarEntry
-                  date={post.date}
+                  date={post.date + (post.time ? ` ${post.time}` : '')}
                   day={post.dayOfWeek}
                   title={post.title}
                   type={post.postType}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -10,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { firebaseDB } from '@/integrations/firebase/client';
 
 interface CalendarPost {
   id: number;
@@ -24,6 +24,8 @@ interface CalendarPost {
   notes?: string;
   images?: string[];
   clientId?: string;
+  socialNetworks?: string[];
+  time?: string;
 }
 
 const ClientPostDetail = () => {
@@ -36,6 +38,7 @@ const ClientPostDetail = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
+  const [loading, setLoading] = useState(true);
   
   // Find the client by ID
   useEffect(() => {
@@ -50,64 +53,115 @@ const ClientPostDetail = () => {
     }
   }, [clientId, settings.clients, navigate]);
   
-  // Load post from localStorage
+  // Load post from Firebase
   useEffect(() => {
-    if (!postId) return;
+    if (!postId || !clientId) return;
     
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const foundPost = allPosts.find((p: CalendarPost) => p.id === parseInt(postId));
-      
-      if (foundPost) {
-        setPost(foundPost);
-        setEditedPost({...foundPost});
-      } else {
-        // Post not found, redirect back
-        navigate(`/client/${clientId}`);
+    const loadPost = async () => {
+      try {
+        setLoading(true);
+        const allPosts = await firebaseDB.getPosts();
+        if (allPosts) {
+          const foundPost = allPosts.find((p: CalendarPost) => p.id === parseInt(postId));
+          
+          if (foundPost) {
+            setPost(foundPost);
+            setEditedPost({...foundPost});
+          } else {
+            // Post not found, redirect back
+            navigate(`/client/${clientId}`);
+          }
+        } else {
+          // No posts found, try localStorage
+          const storedPosts = localStorage.getItem('calendarPosts');
+          if (storedPosts) {
+            const allPosts = JSON.parse(storedPosts);
+            const foundPost = allPosts.find((p: CalendarPost) => p.id === parseInt(postId));
+            
+            if (foundPost) {
+              setPost(foundPost);
+              setEditedPost({...foundPost});
+            } else {
+              navigate(`/client/${clientId}`);
+            }
+          } else {
+            navigate(`/client/${clientId}`);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading post:", error);
+        toast.error("Erro ao carregar a postagem");
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+    
+    loadPost();
+    
+    // Subscribe to updates
+    const unsubscribe = firebaseDB.subscribeToPosts((allPosts) => {
+      if (allPosts) {
+        const foundPost = allPosts.find((p: CalendarPost) => p.id === parseInt(postId));
+        if (foundPost && JSON.stringify(foundPost) !== JSON.stringify(post)) {
+          setPost(foundPost);
+          if (!isEditing) {
+            setEditedPost(foundPost);
+          }
+        }
+      }
+    });
+    
+    return () => unsubscribe();
   }, [postId, clientId, navigate]);
   
   const handleBack = () => {
     navigate(`/client/${clientId}`);
   };
   
-  const handleCompleteTask = (completed: boolean) => {
+  const handleCompleteTask = async (completed: boolean) => {
     if (!post) return;
     
     const updatedPost = {...post, completed};
     setPost(updatedPost);
     
-    // Update in localStorage
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
+    try {
+      // Update in Firebase
+      const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.map((p: CalendarPost) => 
         p.id === post.id ? updatedPost : p
       );
+      await firebaseDB.setPosts(updatedPosts);
+      
+      // Also update localStorage
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+      
+      toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Error updating post status:", error);
+      toast.error("Erro ao atualizar status da postagem");
     }
-    
-    toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
-      duration: 2000,
-    });
   };
   
-  const handleUpdateNotes = (notes: string) => {
+  const handleUpdateNotes = async (notes: string) => {
     if (!post) return;
     
     const updatedPost = {...post, notes};
     setPost(updatedPost);
     
-    // Update in localStorage
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
+    try {
+      // Update in Firebase
+      const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.map((p: CalendarPost) => 
         p.id === post.id ? updatedPost : p
       );
+      await firebaseDB.setPosts(updatedPosts);
+      
+      // Also update localStorage
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    } catch (error) {
+      console.error("Error updating post notes:", error);
     }
   };
   
@@ -148,15 +202,15 @@ const ClientPostDetail = () => {
       setPost(updatedPost);
       setEditedPost(updatedPost);
       
-      // Update in localStorage
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        const updatedPosts = allPosts.map((p: CalendarPost) => 
-          p.id === post.id ? updatedPost : p
-        );
-        localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
-      }
+      // Update in Firebase
+      const allPosts = await firebaseDB.getPosts() || [];
+      const updatedPosts = allPosts.map((p: CalendarPost) => 
+        p.id === post.id ? updatedPost : p
+      );
+      await firebaseDB.setPosts(updatedPosts);
+      
+      // Also update localStorage
+      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
       
       toast("Arquivo(s) adicionado(s) com sucesso!", {
         duration: 2000,
@@ -198,15 +252,15 @@ const ClientPostDetail = () => {
       setPost(updatedPost);
       setEditedPost({...updatedPost});
       
-      // Update in localStorage
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        const updatedPosts = allPosts.map((p: CalendarPost) => 
-          p.id === post.id ? updatedPost : p
-        );
-        localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
-      }
+      // Update in Firebase
+      const allPosts = await firebaseDB.getPosts() || [];
+      const updatedPosts = allPosts.map((p: CalendarPost) => 
+        p.id === post.id ? updatedPost : p
+      );
+      await firebaseDB.setPosts(updatedPosts);
+      
+      // Also update localStorage
+      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
 
       toast("Imagem removida!", {
         duration: 2000,
@@ -238,32 +292,48 @@ const ClientPostDetail = () => {
     setEditedPost(post);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editedPost) return;
     
     const updatedPost = {...editedPost};
     setPost(updatedPost);
     setIsEditing(false);
     
-    // Update in localStorage
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
+    try {
+      // Update in Firebase
+      const allPosts = await firebaseDB.getPosts() || [];
       const updatedPosts = allPosts.map((p: CalendarPost) => 
         p.id === updatedPost.id ? updatedPost : p
       );
+      await firebaseDB.setPosts(updatedPosts);
+      
+      // Also update localStorage
       localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+      
+      toast("Alterações salvas com sucesso!", {
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Error saving post changes:", error);
+      toast.error("Erro ao salvar alterações");
     }
-    
-    toast("Alterações salvas com sucesso!", {
-      duration: 2000,
-    });
   };
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-800 mx-auto"></div>
+          <p className="mt-4 text-gray-700">Carregando postagem...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (!client || !post) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Carregando...</p>
+        <p>Não foi possível encontrar a postagem.</p>
       </div>
     );
   }
@@ -301,7 +371,7 @@ const ClientPostDetail = () => {
               <div className="text-white font-medium py-2 px-4 rounded-full"
                 style={{ backgroundColor: client.themeColor }}
               >
-                {post.date} • {post.day}
+                {post.date}{post.time ? ` • ${post.time}` : ''} • {post.day}
               </div>
               
               <div className="flex items-center gap-2">

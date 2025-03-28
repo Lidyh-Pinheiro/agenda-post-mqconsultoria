@@ -1,5 +1,7 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { firebaseDB } from '@/integrations/firebase/client';
 
 export interface Client {
   id: string;
@@ -61,17 +63,40 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Initial load from Firebase
   useEffect(() => {
-    const storedSettings = localStorage.getItem('appSettings');
-    if (storedSettings) {
-      setSettings(JSON.parse(storedSettings));
-    }
+    const loadSettings = async () => {
+      const storedSettings = await firebaseDB.getSettings();
+      if (storedSettings) {
+        setSettings(storedSettings);
+      }
+      setIsInitialized(true);
+    };
+    
+    loadSettings();
   }, []);
 
+  // Subscribe to real-time updates from Firebase
   useEffect(() => {
-    localStorage.setItem('appSettings', JSON.stringify(settings));
-  }, [settings]);
+    if (!isInitialized) return;
+    
+    const unsubscribe = firebaseDB.subscribeToSettings((newSettings) => {
+      if (newSettings && JSON.stringify(newSettings) !== JSON.stringify(settings)) {
+        setSettings(newSettings);
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [isInitialized, settings]);
+
+  // Save to Firebase when settings change
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    firebaseDB.setSettings(settings);
+  }, [settings, isInitialized]);
 
   const updateCompanyName = (name: string) => {
     setSettings(prev => ({ ...prev, companyName: name }));

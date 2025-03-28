@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Lock, MessageCircle } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
+import { firebaseDB } from '@/integrations/firebase/client';
+import { toast } from 'sonner';
 
 interface CalendarPost {
   id: number;
@@ -47,20 +49,30 @@ const SharedClientAgenda = () => {
       setClient(foundClient);
       
       // Check if there's a stored authentication for this client
-      const storedAuth = localStorage.getItem(`client_auth_${clientId}`);
-      if (storedAuth) {
-        setAuthenticated(true);
-        loadClientPosts(clientId);
-      }
+      const checkAuthentication = async () => {
+        const isAuthenticated = await firebaseDB.getClientAuthentication(clientId);
+        if (isAuthenticated) {
+          setAuthenticated(true);
+          loadClientPosts(clientId);
+        }
+        setLoading(false);
+      };
+      
+      checkAuthentication();
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, [clientId, settings.clients]);
   
-  const loadClientPosts = (clientId: string) => {
-    // Load the posts for this client
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
+  const loadClientPosts = async (clientId: string) => {
+    try {
+      // Load the posts from Firebase
+      const allPosts = await firebaseDB.getPosts();
+      if (!allPosts) {
+        setPosts([]);
+        return;
+      }
+      
       const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
       
       // Sort posts by date
@@ -71,15 +83,26 @@ const SharedClientAgenda = () => {
       });
       
       setPosts(sortedPosts);
+    } catch (error) {
+      console.error("Error loading posts:", error);
+      toast.error("Erro ao carregar as postagens");
+      
+      // Fall back to localStorage
+      const storedPosts = localStorage.getItem('calendarPosts');
+      if (storedPosts) {
+        const allPosts = JSON.parse(storedPosts);
+        const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+        setPosts(clientPosts);
+      }
     }
   };
   
-  const handleAuthenticate = () => {
+  const handleAuthenticate = async () => {
     if (!client || !password) return;
     
     if (client.password === password) {
       setAuthenticated(true);
-      localStorage.setItem(`client_auth_${clientId}`, 'true');
+      await firebaseDB.setClientAuthentication(clientId as string, true);
       loadClientPosts(clientId as string);
       setError('');
     } else {
