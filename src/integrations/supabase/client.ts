@@ -16,7 +16,14 @@ export const supabase = {
   storage: {
     from: () => ({
       upload: async () => ({ data: { path: '' }, error: null }),
-      getPublicUrl: () => ({ data: { publicUrl: '' } })
+      getPublicUrl: () => ({ data: { publicUrl: '' } }),
+      remove: async () => ({ data: null, error: null })
     })
+  },
+  auth: {
+    signOut: async () => ({ error: null }),
+    signUp: async () => ({ data: null, error: null }),
+    signIn: async () => ({ data: null, error: null }),
+    onAuthStateChange: () => ({ data: null, subscription: { unsubscribe: () => {} } })
   }
 };

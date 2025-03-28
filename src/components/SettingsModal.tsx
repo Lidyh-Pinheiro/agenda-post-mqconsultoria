@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { Settings, User, Key } from 'lucide-react';
+import { Settings, User, Key, Eye, EyeOff } from 'lucide-react';
 import ClientTable from './ClientTable';
 import AccountSettingsModal from './AccountSettingsModal';
+import { useToast } from "@/hooks/use-toast";
 
 interface SettingsModalProps {
   open: boolean;
@@ -33,10 +34,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     updateClientPassword
   } = useSettings();
   
+  const { toast } = useToast();
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [ownerName, setOwnerName] = useState(settings.ownerName);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(editClientId);
   const [clientPassword, setClientPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   
   useEffect(() => {
     if (editClientId) {
@@ -57,16 +62,45 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     if (selectedClientId && clientPassword.trim()) {
       updateClientPassword(selectedClientId, clientPassword);
       setClientPassword('');
+      toast({
+        title: "Senha atualizada",
+        description: "A senha do cliente foi atualizada com sucesso.",
+      });
     }
   };
   
   const handleSelectClient = (clientId: string) => {
     setSelectedClientId(clientId);
     setClientPassword('');
+    setAdminPassword('');
+    setShowPassword(false);
+    setShowCurrentPassword(false);
   };
   
   const selectedClient = selectedClientId ? 
     clients.find(c => c.id === selectedClientId) : null;
+  
+  // Mock admin password check - in a real app, this would be more secure
+  const isAdminPasswordCorrect = () => {
+    return adminPassword === "admin123"; // Replace with actual admin password check
+  };
+  
+  const toggleCurrentPasswordVisibility = () => {
+    if (!showCurrentPassword && !adminPassword) {
+      return; // Don't toggle if admin password is not entered
+    }
+    
+    if (showCurrentPassword && !isAdminPasswordCorrect()) {
+      toast({
+        title: "Senha incorreta",
+        description: "A senha do administrador está incorreta.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setShowCurrentPassword(!showCurrentPassword);
+  };
   
   return (
     <>
@@ -128,14 +162,65 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       <Key className="w-5 h-5 mr-2 text-gray-600" />
                       Atualizar Senha do Cliente: {selectedClient.name}
                     </h3>
-                    <div className="flex gap-4">
-                      <Input
-                        type="password"
-                        value={clientPassword}
-                        onChange={(e) => setClientPassword(e.target.value)}
-                        placeholder="Nova senha"
-                        className="flex-1"
-                      />
+                    
+                    <div className="space-y-4">
+                      {selectedClient.password && (
+                        <div className="space-y-2">
+                          <Label htmlFor="currentPassword">Senha Atual</Label>
+                          <div className="relative">
+                            <Input
+                              id="adminPassword"
+                              type={showCurrentPassword ? "text" : "password"}
+                              value={showCurrentPassword ? selectedClient.password : adminPassword}
+                              onChange={(e) => setAdminPassword(e.target.value)}
+                              placeholder={showCurrentPassword ? "" : "Digite a senha de administrador para visualizar"}
+                              readOnly={showCurrentPassword}
+                              className="pr-10"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-0 top-0 h-10 w-10"
+                              onClick={toggleCurrentPasswordVisibility}
+                            >
+                              {showCurrentPassword ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="newPassword">Nova Senha</Label>
+                        <div className="relative">
+                          <Input
+                            id="newPassword"
+                            type={showPassword ? "text" : "password"}
+                            value={clientPassword}
+                            onChange={(e) => setClientPassword(e.target.value)}
+                            placeholder="Nova senha"
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-0 h-10 w-10"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                      
                       <Button onClick={handleSaveClientPassword}>
                         Atualizar Senha
                       </Button>
