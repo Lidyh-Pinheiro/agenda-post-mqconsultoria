@@ -43,6 +43,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AddPostModalProps {
   open: boolean;
@@ -67,6 +69,7 @@ interface AddPostModalProps {
     observation?: string;
     socialNetworks?: string[];
   } | null;
+  clientId?: string;
 }
 
 const POST_TYPES = [
@@ -111,7 +114,8 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   onOpenChange, 
   onSave,
   initialDate,
-  initialPost
+  initialPost,
+  clientId
 }) => {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -148,8 +152,9 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     }
   }, [initialPost, initialDate, open]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title || !text || !selectedDate || selectedPostTypes.length === 0) {
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
@@ -161,6 +166,49 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     
     const typeString = selectedPostTypes.join(' + ');
     const mainPostType = selectedPostTypes[0];
+    
+    try {
+      if (clientId) {
+        const { data, error } = await supabase
+          .from('calendar_posts')
+          .insert({
+            client_id: clientId,
+            date: formattedDate,
+            day: dayNames[dayOfWeek],
+            day_of_week: shortDayNames[dayOfWeek],
+            title: title,
+            type: typeString,
+            post_type: mainPostType,
+            text: text,
+            completed: false,
+            notes: observation || ''
+          })
+          .select()
+          .single();
+          
+        if (error) {
+          console.error('Error saving post to Supabase:', error);
+          throw error;
+        }
+        
+        if (selectedSocialNetworks.length > 0) {
+          const networksToInsert = selectedSocialNetworks.map(network => ({
+            post_id: data.id,
+            network_name: network
+          }));
+          
+          const { error: networksError } = await supabase
+            .from('post_social_networks')
+            .insert(networksToInsert);
+            
+          if (networksError) {
+            console.error('Error saving social networks:', networksError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error saving post:', error);
+    }
     
     onSave({
       date: formattedDate,
