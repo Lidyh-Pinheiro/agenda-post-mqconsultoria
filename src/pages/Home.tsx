@@ -1,18 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Settings, Calendar, ChevronLeft, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
-
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -25,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/contexts/SettingsContext';
 import ClientCard from '@/components/ClientCard';
 import ClientTable from '@/components/ClientTable';
+import SettingsModal from '@/components/SettingsModal';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -33,25 +25,19 @@ const formSchema = z.object({
   themeColor: z.string().min(4, {
     message: "Cor inválida",
   }),
+  password: z.string().min(1, {
+    message: "Senha é obrigatória",
+  }),
   active: z.boolean().default(true).optional(),
   description: z.string().optional(),
 })
 
 const Home = () => {
+  const [openAddClientModal, setOpenAddClientModal] = useState(false);
   const [openSettingsModal, setOpenSettingsModal] = useState(false);
   const [isTableView, setIsTableView] = useState(false);
   const { toast } = useToast();
-  const settings = useSettings();
-  
-  // Initialize with a default empty array to prevent undefined.length error
-  const clients = settings?.clients || [];
-  const createClient = settings?.createClient || (() => {});
-  const updateClient = settings?.updateClient || (() => {});
-  const deleteClient = settings?.deleteClient || (() => {});
-  const shareClient = settings?.shareClient || (() => {});
-  const selectedClient = settings?.selectedClient || null;
-  const setSelectedClient = settings?.setSelectedClient || (() => {});
-  
+  const { clients, createClient, updateClient, deleteClient, shareClient, selectedClient, setSelectedClient } = useSettings();
   const navigate = useNavigate();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -59,17 +45,14 @@ const Home = () => {
     defaultValues: {
       name: "",
       themeColor: "#1E3A8A",
+      password: "",
       active: true,
       description: "",
     },
   })
 
-  const handleOpenSettingsModal = () => {
-    setOpenSettingsModal(true);
-  };
-
-  const handleCloseSettingsModal = () => {
-    setOpenSettingsModal(false);
+  const handleCloseAddClientModal = () => {
+    setOpenAddClientModal(false);
     form.reset();
   };
 
@@ -83,7 +66,7 @@ const Home = () => {
       title: "Cliente criado com sucesso!",
       description: "O cliente foi adicionado à sua lista.",
     })
-    handleCloseSettingsModal();
+    handleCloseAddClientModal();
   }
 
   const handleSelectClient = (clientId: string) => {
@@ -93,11 +76,8 @@ const Home = () => {
 
   const handleEditClient = (client: any) => {
     setSelectedClient(client.id);
-    form.setValue("name", client.name);
-    form.setValue("themeColor", client.themeColor);
-    form.setValue("active", client.active);
-    form.setValue("description", client.description);
-    handleOpenSettingsModal();
+    // Open settings modal with client tab
+    setOpenSettingsModal(true);
   };
 
   const handleShareClient = (clientId: string) => {
@@ -135,7 +115,7 @@ const Home = () => {
             <LogOut className="h-4 w-4" />
             Sair
           </Button>
-          <Button onClick={handleOpenSettingsModal}>
+          <Button onClick={() => setOpenSettingsModal(true)}>
             Configurações
           </Button>
         </div>
@@ -147,105 +127,14 @@ const Home = () => {
           <Button variant="outline" size="sm" onClick={() => setIsTableView(!isTableView)}>
             {isTableView ? "Visualização em Card" : "Visualização em Tabela"}
           </Button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Cliente
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Adicionar Cliente</DialogTitle>
-                <DialogDescription>
-                  Crie um novo cliente para gerenciar a agenda de postagens.
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Nome do cliente" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Este é o nome que será exibido na agenda.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="themeColor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cor</FormLabel>
-                        <FormControl>
-                          <Input type="color" defaultValue="#1E3A8A" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Escolha uma cor para identificar o cliente.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Escreva uma descrição sobre o cliente."
-                            className="resize-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Adicione uma descrição para ajudar a identificar o cliente.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="active"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-md border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel>Ativo</FormLabel>
-                          <FormDescription>
-                            Defina se o cliente está ativo ou não.
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <Button type="submit">Salvar</Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setOpenAddClientModal(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Adicionar Cliente
+          </Button>
         </div>
       </div>
 
-      {clients.length === 0 ? (
+      {!clients || clients.length === 0 ? (
         <div className="text-center py-6 text-gray-500">
           Nenhum cliente cadastrado
         </div>
@@ -275,6 +164,122 @@ const Home = () => {
           )}
         </>
       )}
+
+      {/* Add Client Modal */}
+      <Dialog open={openAddClientModal} onOpenChange={setOpenAddClientModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Adicionar Cliente</DialogTitle>
+            <DialogDescription>
+              Crie um novo cliente para gerenciar a agenda de postagens.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nome</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nome do cliente" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Este é o nome que será exibido na agenda.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="themeColor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cor</FormLabel>
+                    <FormControl>
+                      <Input type="color" defaultValue="#1E3A8A" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Escolha uma cor para identificar o cliente.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Senha do cliente" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Crie uma senha para proteger os dados do cliente.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Escreva uma descrição sobre o cliente."
+                        className="resize-none"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Adicione uma descrição para ajudar a identificar o cliente.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="active"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-md border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel>Ativo</FormLabel>
+                      <FormDescription>
+                        Defina se o cliente está ativo ou não.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleCloseAddClientModal}>Cancelar</Button>
+                <Button type="submit">Salvar</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        open={openSettingsModal}
+        onOpenChange={setOpenSettingsModal}
+        initialTab="clients"
+        editClientId={selectedClient}
+      />
     </div>
   );
 };

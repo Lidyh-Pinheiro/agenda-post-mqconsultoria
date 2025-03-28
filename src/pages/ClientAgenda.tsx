@@ -5,30 +5,25 @@ import { Calendar, ChevronLeft, LogOut } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { useSettings, Client } from '@/contexts/SettingsContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Define Post type and Client type
 interface Post {
   id: string;
   title: string;
   content: string;
-  client_id: string;
   date: string;
+  client_id: string;
   created_at: string;
-}
-
-interface Client {
-  id: string;
-  name: string;
 }
 
 const ClientAgenda = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const navigate = useNavigate();
+  const { clients } = useSettings();
 
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
@@ -38,41 +33,26 @@ const ClientAgenda = () => {
   const { data: client, isLoading, isError } = useQuery({
     queryKey: ['client', clientId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .single();
-
-      if (error) {
-        throw new Error(error.message);
+      // Find client from context instead of fetching from Supabase
+      const clientData = clients.find(c => c.id === clientId);
+      if (!clientData) {
+        throw new Error("Client not found");
       }
-
-      return data as Client;
-    }
+      return clientData;
+    },
+    enabled: !!clientId
   });
 
   useEffect(() => {
     const fetchPosts = async () => {
       if (!clientId) return;
-
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd', { locale: ptBR });
-
-      const { data: postsData, error } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('client_id', clientId)
-        .eq('date', formattedDate)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching posts:', error);
-        return;
-      }
-
-      setPosts(postsData || []);
+      
+      // Since we don't have Supabase tables yet, we'll use mock data
+      // This would be replaced with actual Supabase queries once tables are set up
+      const mockPosts: Post[] = [];
+      setPosts(mockPosts);
     };
-
+    
     fetchPosts();
   }, [clientId, selectedDate]);
 
@@ -92,7 +72,11 @@ const ClientAgenda = () => {
     <div className="container mx-auto px-4 py-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/')}
+          >
             <ChevronLeft className="h-4 w-4 mr-1" />
             Voltar
           </Button>
@@ -124,29 +108,39 @@ const ClientAgenda = () => {
         </div>
       </Card>
 
-      {/* Create a simple implementation of PostList */}
+      {/* Simple PostList component inline */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Postagens</h2>
+        <h2 className="text-xl font-semibold">Postagens para {format(selectedDate, 'dd/MM/yyyy', { locale: ptBR })}</h2>
         {posts.length === 0 ? (
-          <Card className="p-4">
-            <p className="text-gray-500 text-center">Nenhuma postagem para esta data.</p>
-          </Card>
+          <div className="p-6 text-center bg-gray-50 rounded-lg border border-dashed">
+            <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-2" />
+            <p className="text-gray-500">Nenhuma postagem programada para este dia.</p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => console.log("Adicionar post")}
+            >
+              Adicionar Postagem
+            </Button>
+          </div>
         ) : (
-          posts.map((post) => (
-            <Card key={post.id} className="p-4">
-              <h3 className="font-medium text-lg">{post.title}</h3>
-              <p className="text-gray-600 mt-2">{post.content}</p>
-              <div className="mt-3 flex justify-end">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate(`/client/${clientId}/post/${post.id}`)}
-                >
-                  Ver detalhes
-                </Button>
-              </div>
-            </Card>
-          ))
+          <div className="grid gap-4">
+            {posts.map((post) => (
+              <Card key={post.id} className="p-4">
+                <h3 className="font-semibold">{post.title}</h3>
+                <p className="text-gray-600 line-clamp-2">{post.content}</p>
+                <div className="flex justify-end mt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => console.log("View post", post.id)}
+                  >
+                    Ver Detalhes
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
         )}
       </div>
     </div>
