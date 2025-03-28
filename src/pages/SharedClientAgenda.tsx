@@ -4,6 +4,8 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
+import { Printer } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface CalendarPost {
   id: number;
@@ -58,6 +60,10 @@ const SharedClientAgenda = () => {
     setLoading(false);
   }, [clientId, settings.clients]);
   
+  const handlePrint = () => {
+    window.print();
+  };
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -88,23 +94,35 @@ const SharedClientAgenda = () => {
   
   return (
     <div 
-      className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-white"
+      className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-white print:bg-white"
       style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}15, white)` }}
     >
       <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8 print:mb-12">
           <h1 
-            className="text-3xl font-bold tracking-tight"
+            className="text-3xl font-bold tracking-tight print:text-4xl"
             style={{ color: themeColor }}
           >
             Agenda de Postagens
           </h1>
-          <h2 className="text-2xl font-semibold text-gray-800 mt-2">
+          <h2 className="text-2xl font-semibold text-gray-800 mt-2 print:text-3xl">
             {client.name}
           </h2>
-          <p className="text-gray-700 mt-2">
+          <p className="text-gray-700 mt-2 print:text-lg">
             {client.description || "Confira abaixo as postagens planejadas"}
           </p>
+          
+          <div className="mt-4 print:hidden">
+            <Button
+              onClick={handlePrint}
+              variant="outline"
+              className="flex items-center gap-2"
+              style={{ borderColor: themeColor, color: themeColor }}
+            >
+              <Printer className="w-4 h-4" />
+              Imprimir Agenda
+            </Button>
+          </div>
         </div>
         
         {posts.length > 0 ? (
@@ -120,10 +138,10 @@ const SharedClientAgenda = () => {
                   highlighted={true}
                   themeColor={themeColor}
                   completed={post.completed}
-                  socialNetworks={post.socialNetworks}
+                  socialNetworks={post.socialNetworks || []}
                   preview={true}
-                  hideIcons={false}
-                  className="print:break-inside-avoid print:shadow-none"
+                  hideIcons={true}
+                  className="print:shadow-none print:border print:border-gray-200"
                 />
               </div>
             ))}
@@ -140,7 +158,7 @@ const SharedClientAgenda = () => {
           </Card>
         )}
         
-        <div className="mt-12 text-center text-gray-600 text-sm">
+        <div className="mt-12 text-center text-gray-600 text-sm print:mt-16 print:text-base">
           <p>Última atualização: {new Date().toLocaleDateString('pt-BR')}</p>
           {settings.companyName && (
             <p className="mt-2">{settings.companyName}</p>
