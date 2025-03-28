@@ -7,9 +7,11 @@ export interface Client {
   name: string;
   themeColor: string;
   createdAt: Date;
+  postsCount?: number; // Add posts count
 }
 
 export interface Settings {
+  companyName: string; // Add company name
   ownerName: string;
   clients: Client[];
   selectedClientId: string | null;
@@ -17,6 +19,7 @@ export interface Settings {
 
 interface SettingsContextType {
   settings: Settings;
+  updateCompanyName: (name: string) => void; // Add company name update
   updateOwnerName: (name: string) => void;
   addClient: (name: string, themeColor: string) => string;
   updateClient: (id: string, name: string, themeColor: string) => void;
@@ -24,11 +27,21 @@ interface SettingsContextType {
   selectClient: (id: string | null) => void;
   getSelectedClient: () => Client | null;
   generateClientShareLink: (clientId: string) => string;
+  updateClientPostsCount: (clientId: string, count: number) => void; // Add posts count update
 }
 
 const defaultSettings: Settings = {
-  ownerName: 'Vereadora Neia Marques',
-  clients: [],
+  companyName: 'MQ Consultoria', // Default company name
+  ownerName: 'Administrador',
+  clients: [
+    {
+      id: uuidv4(),
+      name: 'Vereadora Neia Marques',
+      themeColor: '#dc2626',
+      createdAt: new Date(),
+      postsCount: 12, // Sample posts count
+    }
+  ],
   selectedClientId: null,
 };
 
@@ -50,6 +63,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('appSettings', JSON.stringify(settings));
   }, [settings]);
 
+  const updateCompanyName = (name: string) => {
+    setSettings(prev => ({ ...prev, companyName: name }));
+  };
+
   const updateOwnerName = (name: string) => {
     setSettings(prev => ({ ...prev, ownerName: name }));
   };
@@ -60,6 +77,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       name,
       themeColor,
       createdAt: new Date(),
+      postsCount: 0,
     };
 
     setSettings(prev => ({
@@ -110,17 +128,28 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return `${baseUrl}/client/${clientId}`;
   };
 
+  const updateClientPostsCount = (clientId: string, count: number) => {
+    setSettings(prev => ({
+      ...prev,
+      clients: prev.clients.map(client => 
+        client.id === clientId ? { ...client, postsCount: count } : client
+      ),
+    }));
+  };
+
   return (
     <SettingsContext.Provider 
       value={{ 
         settings, 
+        updateCompanyName,
         updateOwnerName, 
         addClient, 
         updateClient, 
         deleteClient, 
         selectClient,
         getSelectedClient,
-        generateClientShareLink
+        generateClientShareLink,
+        updateClientPostsCount
       }}
     >
       {children}

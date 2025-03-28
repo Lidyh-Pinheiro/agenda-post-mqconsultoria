@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Save, Edit, Copy, Palette } from 'lucide-react';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import {
@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 interface SettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialTab?: string;
+  editClientId?: string | null;
 }
 
 const THEME_COLORS = [
@@ -34,9 +36,15 @@ const THEME_COLORS = [
   '#db2777', // pink-600
 ];
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({ 
+  open, 
+  onOpenChange, 
+  initialTab = 'general',
+  editClientId = null
+}) => {
   const {
     settings,
+    updateCompanyName,
     updateOwnerName,
     addClient,
     updateClient,
@@ -45,8 +53,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => 
     generateClientShareLink
   } = useSettings();
   
+  const [companyName, setCompanyName] = useState(settings.companyName);
   const [ownerName, setOwnerName] = useState(settings.ownerName);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   // New client form
   const [newClientName, setNewClientName] = useState('');
@@ -57,7 +66,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => 
   const [editClientName, setEditClientName] = useState('');
   const [editClientColor, setEditClientColor] = useState('');
 
+  // Set initial edit client if provided
+  useEffect(() => {
+    if (editClientId) {
+      handleStartEditClient(settings.clients.find(c => c.id === editClientId) as Client);
+      setActiveTab('clients');
+    }
+  }, [editClientId, settings.clients]);
+
+  // Update tab if initialTab changes
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   const handleSaveGeneral = () => {
+    updateCompanyName(companyName);
     updateOwnerName(ownerName);
     toast.success('Configurações gerais salvas!');
   };
@@ -122,7 +145,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => 
           <DialogTitle className="text-2xl font-semibold">Configurações</DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab} className="mt-4">
+        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="mt-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="clients">Clientes</TabsTrigger>
@@ -130,6 +153,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => 
           
           {/* General Settings Tab */}
           <TabsContent value="general" className="mt-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nome da Empresa
+              </label>
+              <Input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Nome da Empresa"
+              />
+            </div>
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nome do Administrador
@@ -253,6 +287,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => 
                                 style={{ backgroundColor: client.themeColor }}
                               ></div>
                               <span className="font-medium">{client.name}</span>
+                              {client.postsCount && client.postsCount > 0 && (
+                                <div className="ml-2 flex items-center gap-1 px-2 py-0.5 text-xs rounded-full" style={{ backgroundColor: `${client.themeColor}20`, color: client.themeColor }}>
+                                  <Calendar className="w-3 h-3" />
+                                  {client.postsCount}
+                                </div>
+                              )}
                             </div>
                             
                             <div className="flex gap-1">
