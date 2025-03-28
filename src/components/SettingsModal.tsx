@@ -1,32 +1,48 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useSettings } from '@/contexts/SettingsContext';
-import { Settings, User } from 'lucide-react';
+import { useSettings, Client } from '@/contexts/SettingsContext';
+import { Settings, User, Key } from 'lucide-react';
 import ClientTable from './ClientTable';
 import AccountSettingsModal from './AccountSettingsModal';
 
 interface SettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialTab?: string; // Make this optional
-  editClientId?: string | null; // Make this optional
+  initialTab?: string;
+  editClientId?: string | null;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
   open, 
   onOpenChange, 
-  initialTab = "general", // Default to general tab
+  initialTab = "general",
   editClientId = null 
 }) => {
-  const { settings, updateCompanyName, updateOwnerName, showAccountSettings, setShowAccountSettings, clients } = useSettings();
+  const { 
+    settings, 
+    updateCompanyName, 
+    updateOwnerName, 
+    showAccountSettings, 
+    setShowAccountSettings, 
+    clients,
+    updateClientPassword
+  } = useSettings();
   
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [ownerName, setOwnerName] = useState(settings.ownerName);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(editClientId);
+  const [clientPassword, setClientPassword] = useState('');
+  
+  useEffect(() => {
+    if (editClientId) {
+      setSelectedClientId(editClientId);
+    }
+  }, [editClientId]);
   
   const handleSaveGeneral = () => {
     updateCompanyName(companyName);
@@ -36,6 +52,21 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleOpenAccountSettings = () => {
     setShowAccountSettings(true);
   };
+  
+  const handleSaveClientPassword = () => {
+    if (selectedClientId && clientPassword.trim()) {
+      updateClientPassword(selectedClientId, clientPassword);
+      setClientPassword('');
+    }
+  };
+  
+  const handleSelectClient = (clientId: string) => {
+    setSelectedClientId(clientId);
+    setClientPassword('');
+  };
+  
+  const selectedClient = selectedClientId ? 
+    clients.find(c => c.id === selectedClientId) : null;
   
   return (
     <>
@@ -82,13 +113,36 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </TabsContent>
             
             <TabsContent value="clients">
-              <ClientTable 
-                clients={clients}
-                onSelect={(clientId) => {}}
-                onEdit={(client) => {}}
-                onShare={(clientId) => {}}
-                onDelete={(clientId) => {}}
-              />
+              <div className="space-y-6">
+                <ClientTable 
+                  clients={clients}
+                  onSelect={handleSelectClient}
+                  onEdit={(client) => {}}
+                  onShare={(clientId) => {}}
+                  onDelete={(clientId) => {}}
+                />
+                
+                {selectedClient && (
+                  <div className="mt-6 p-4 border rounded-lg">
+                    <h3 className="text-lg font-medium mb-4 flex items-center">
+                      <Key className="w-5 h-5 mr-2 text-gray-600" />
+                      Atualizar Senha do Cliente: {selectedClient.name}
+                    </h3>
+                    <div className="flex gap-4">
+                      <Input
+                        type="password"
+                        value={clientPassword}
+                        onChange={(e) => setClientPassword(e.target.value)}
+                        placeholder="Nova senha"
+                        className="flex-1"
+                      />
+                      <Button onClick={handleSaveClientPassword}>
+                        Atualizar Senha
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </TabsContent>
             
             <TabsContent value="account" className="space-y-4 mt-4">

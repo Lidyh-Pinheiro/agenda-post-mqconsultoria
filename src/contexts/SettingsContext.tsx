@@ -37,6 +37,7 @@ interface SettingsContextType {
   shareClient: (clientId: string) => void;
   showAccountSettings: boolean;
   setShowAccountSettings: (show: boolean) => void;
+  updateClientPassword: (clientId: string, password: string) => void;
 }
 
 const defaultSettings: Settings = {
@@ -186,9 +187,21 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const shareClient = (clientId: string) => {
-    // Implementation for sharing client
     console.log(`Sharing client with ID: ${clientId}`);
-    // This would be implemented with actual sharing logic
+  };
+
+  const updateClientPassword = (clientId: string, password: string) => {
+    if (!password.trim()) return; // Don't update if password is empty
+    
+    setSettings(prev => ({
+      ...prev,
+      clients: prev.clients.map(client => {
+        if (client.id === clientId) {
+          return { ...client, password };
+        }
+        return client;
+      }),
+    }));
   };
 
   return (
@@ -210,7 +223,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateClientPostsCount,
         shareClient,
         showAccountSettings,
-        setShowAccountSettings
+        setShowAccountSettings,
+        updateClientPassword
       }}
     >
       {children}
