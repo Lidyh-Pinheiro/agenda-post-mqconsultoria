@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Calendar, PanelLeft, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import ClientTable from '@/components/ClientTable';
+import ClientCard from '@/components/ClientCard';
 import SettingsModal from '@/components/SettingsModal';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +20,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showSettings, setShowSettings] = useState(false);
   const [editClientId, setEditClientId] = useState<string | null>(null);
+  const [isTableView, setIsTableView] = useState(false);
   const [clientStats, setClientStats] = useState({
     total: 0,
     active: 0,
@@ -117,6 +119,15 @@ const Admin = () => {
         });
         console.error('Failed to copy:', err);
       });
+  };
+
+  const handleSelectClient = (clientId: string) => {
+    navigate(`/client/${clientId}`);
+  };
+
+  const handleDeleteClient = (clientId: string) => {
+    // This is just a placeholder - actual delete functionality would need to be implemented
+    toast.error("Funcionalidade de exclusão não implementada no painel admin");
   };
 
   return (
@@ -251,20 +262,45 @@ const Admin = () => {
             
             <TabsContent value="clients" className="mt-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Gerenciamento de Clientes</CardTitle>
-                  <CardDescription>
-                    Visualize e gerencie todos os clientes do sistema
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Gerenciamento de Clientes</CardTitle>
+                    <CardDescription>
+                      Visualize e gerencie todos os clientes do sistema
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    variant="neutral" 
+                    size="sm" 
+                    onClick={() => setIsTableView(!isTableView)}
+                    className="rounded-[10px]"
+                  >
+                    {isTableView ? "Visualização em Card" : "Visualização em Tabela"}
+                  </Button>
                 </CardHeader>
                 <CardContent>
-                  <ClientTable 
-                    clients={clients}
-                    onSelect={() => {}}
-                    onEdit={handleEditClient}
-                    onShare={handleShareClient}
-                    onDelete={(clientId) => {}}
-                  />
+                  {isTableView ? (
+                    <ClientTable 
+                      clients={clients}
+                      onSelect={handleSelectClient}
+                      onEdit={handleEditClient}
+                      onShare={handleShareClient}
+                      onDelete={handleDeleteClient}
+                    />
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {clients.map((client) => (
+                        <ClientCard
+                          key={client.id}
+                          client={client}
+                          onSelect={() => handleSelectClient(client.id)}
+                          onEdit={() => handleEditClient(client)}
+                          onShare={() => handleShareClient(client.id)}
+                          onDelete={() => handleDeleteClient(client.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

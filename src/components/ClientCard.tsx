@@ -124,6 +124,7 @@ const ClientCard: React.FC<ClientCardProps> = ({ client, onSelect, onEdit, onSha
             className="w-9 p-0 flex justify-center"
           >
             <Share2 className="w-4 h-4" />
+            <span className="sr-only">Área de Cliente</span>
           </Button>
           
           <Button
