@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Save, Edit, Copy, Palette } from 'lucide-react';
+import { X, Plus, Trash2, Save, Edit, Copy, Palette, Calendar } from 'lucide-react';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import {
   Dialog,

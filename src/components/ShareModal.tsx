@@ -2,7 +2,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { WhatsappIcon, FacebookIcon, Send } from 'lucide-react';
+import { MessageSquare, Facebook, Send } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
 
@@ -79,7 +79,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId })
               onClick={shareViaWhatsApp}
               className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white"
             >
-              <WhatsappIcon className="w-4 h-4" />
+              <MessageSquare className="w-4 h-4" />
               WhatsApp
             </Button>
             
@@ -87,7 +87,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId })
               onClick={shareViaFacebook}
               className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <FacebookIcon className="w-4 h-4" />
+              <Facebook className="w-4 h-4" />
               Facebook
             </Button>
             
