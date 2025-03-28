@@ -46,6 +46,7 @@ export type Database = {
           dayofweek: string
           id: number
           images: string[] | null
+          month: string | null
           notes: string | null
           posttype: string
           socialnetworks: string[] | null
@@ -53,6 +54,7 @@ export type Database = {
           time: string | null
           title: string
           type: string | null
+          year: string | null
         }
         Insert: {
           clientid?: string | null
@@ -63,6 +65,7 @@ export type Database = {
           dayofweek: string
           id?: number
           images?: string[] | null
+          month?: string | null
           notes?: string | null
           posttype: string
           socialnetworks?: string[] | null
@@ -70,6 +73,7 @@ export type Database = {
           time?: string | null
           title: string
           type?: string | null
+          year?: string | null
         }
         Update: {
           clientid?: string | null
@@ -80,6 +84,7 @@ export type Database = {
           dayofweek?: string
           id?: number
           images?: string[] | null
+          month?: string | null
           notes?: string | null
           posttype?: string
           socialnetworks?: string[] | null
@@ -87,6 +92,7 @@ export type Database = {
           time?: string | null
           title?: string
           type?: string | null
+          year?: string | null
         }
         Relationships: [
           {

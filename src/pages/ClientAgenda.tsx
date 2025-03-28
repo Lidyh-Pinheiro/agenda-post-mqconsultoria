@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -10,7 +11,6 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { supabase } from '@/integrations/supabase/client';
 import { 
   Table, 
   TableBody, 
@@ -24,6 +24,7 @@ import { ptBR } from 'date-fns/locale';
 import AddPostModal from '@/components/AddPostModal';
 import DeleteConfirmDialog from '@/components/DeleteConfirmDialog';
 import ShareModal from '@/components/ShareModal';
+import { fetchClientById, fetchClientPosts, savePost, deletePost } from '@/integrations/supabase/client';
 
 interface CalendarPost {
   id: number;
@@ -32,13 +33,15 @@ interface CalendarPost {
   dayOfWeek: string;
   title: string;
   type: string;
-  postType: string;
+  posttype: string;
   text: string;
   completed?: boolean;
   notes?: string;
   images?: string[];
-  clientId?: string;
-  socialNetworks?: string[];
+  clientid?: string;
+  socialnetworks?: string[];
+  month?: string;
+  year?: string;
 }
 
 const ClientAgenda = () => {
@@ -59,45 +62,59 @@ const ClientAgenda = () => {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState<number | null>(null);
   const [editingPost, setEditingPost] = useState<CalendarPost | null>(null);
+  const [loading, setLoading] = useState(true);
   
+  // Load client data
   useEffect(() => {
     if (!clientId) return;
     
-    const foundClient = settings.clients.find(c => c.id === clientId);
-    if (foundClient) {
-      setClient(foundClient);
-    } else {
-      navigate('/');
-    }
+    const loadClient = async () => {
+      try {
+        // First try to find client in settings context
+        const contextClient = settings.clients.find(c => c.id === clientId);
+        
+        if (contextClient) {
+          setClient(contextClient);
+        } else {
+          // If not found in context, try to fetch from Supabase
+          const supabaseClient = await fetchClientById(clientId);
+          if (supabaseClient) {
+            setClient(supabaseClient as Client);
+          } else {
+            navigate('/');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading client:', error);
+        toast.error('Erro ao carregar dados do cliente');
+        navigate('/');
+      }
+    };
+    
+    loadClient();
   }, [clientId, settings.clients, navigate]);
   
+  // Load posts for this client from Supabase
   useEffect(() => {
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts && clientId) {
-      const allPosts = JSON.parse(storedPosts);
-      const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
-      setPosts(sortPostsByDate(clientPosts));
-    }
+    if (!clientId) return;
+    
+    const loadPosts = async () => {
+      setLoading(true);
+      try {
+        const postsData = await fetchClientPosts(clientId);
+        setPosts(sortPostsByDate(postsData));
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading posts:', error);
+        toast.error('Erro ao carregar postagens');
+        setLoading(false);
+      }
+    };
+    
+    loadPosts();
   }, [clientId]);
   
-  useEffect(() => {
-    if (posts.length > 0 || postToDelete !== null) {
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        
-        const otherPosts = allPosts.filter((p: CalendarPost) => 
-          p.clientId !== clientId || 
-          (postToDelete !== null && p.id === postToDelete)
-        );
-        
-        localStorage.setItem('calendarPosts', JSON.stringify([...otherPosts, ...posts]));
-      } else {
-        localStorage.setItem('calendarPosts', JSON.stringify(posts));
-      }
-    }
-  }, [posts, clientId, postToDelete]);
-  
+  // Animation delay for posts display
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisiblePosts(posts);
@@ -106,6 +123,7 @@ const ClientAgenda = () => {
     return () => clearTimeout(timer);
   }, [posts]);
   
+  // Filter posts by month
   useEffect(() => {
     if (posts.length > 0) {
       if (filterMonth === 'all') {
@@ -129,35 +147,58 @@ const ClientAgenda = () => {
     });
   };
   
-  const handleAddPost = (newPostData: Omit<CalendarPost, 'id'>) => {
-    if (editingPost) {
-      const updatedPosts = posts.map(post => 
-        post.id === editingPost.id 
-          ? { ...post, ...newPostData, id: editingPost.id } 
-          : post
-      );
-      
-      setPosts(sortPostsByDate(updatedPosts));
-      setEditingPost(null);
-      
-      toast.success("Postagem atualizada com sucesso!", {
-        description: `${newPostData.date} - ${newPostData.title}`
-      });
-    } else {
-      const newId = Math.max(0, ...posts.map(p => p.id)) + 1;
-      const newPost: CalendarPost = {
-        id: newId,
-        ...newPostData,
-        completed: false,
-        notes: '',
-        clientId: clientId
-      };
-      
-      setPosts(sortPostsByDate([...posts, newPost]));
-      
-      toast.success("Postagem adicionada com sucesso!", {
-        description: `${newPost.date} - ${newPost.title}`
-      });
+  const handleAddPost = async (newPostData: Omit<CalendarPost, 'id'>) => {
+    if (!clientId) return;
+    
+    try {
+      if (editingPost) {
+        // Update existing post
+        const updatedPost = {
+          ...editingPost,
+          ...newPostData,
+        };
+        
+        const savedPost = await savePost(updatedPost);
+        
+        if (savedPost) {
+          setPosts(prev => 
+            sortPostsByDate(
+              prev.map(post => post.id === editingPost.id ? savedPost : post)
+            )
+          );
+          
+          setEditingPost(null);
+          
+          toast.success("Postagem atualizada com sucesso!", {
+            description: `${newPostData.date} - ${newPostData.title}`
+          });
+        } else {
+          toast.error("Erro ao atualizar postagem");
+        }
+      } else {
+        // Create new post
+        const newPost = {
+          ...newPostData,
+          completed: false,
+          notes: '',
+          clientid: clientId
+        };
+        
+        const savedPost = await savePost(newPost);
+        
+        if (savedPost) {
+          setPosts(prev => sortPostsByDate([...prev, savedPost]));
+          
+          toast.success("Postagem adicionada com sucesso!", {
+            description: `${newPost.date} - ${newPost.title}`
+          });
+        } else {
+          toast.error("Erro ao adicionar postagem");
+        }
+      }
+    } catch (error) {
+      console.error('Error saving post:', error);
+      toast.error("Erro ao salvar postagem");
     }
   };
   
@@ -166,22 +207,25 @@ const ClientAgenda = () => {
     setDeleteDialogOpen(true);
   };
   
-  const handleDeletePost = () => {
+  const handleDeletePost = async () => {
     if (postToDelete === null) return;
     
-    setPosts(prev => prev.filter(post => post.id !== postToDelete));
-    
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const updatedPosts = allPosts.filter((p: CalendarPost) => p.id !== postToDelete);
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    try {
+      const success = await deletePost(postToDelete);
+      
+      if (success) {
+        setPosts(prev => prev.filter(post => post.id !== postToDelete));
+        toast.success("Postagem removida com sucesso!");
+      } else {
+        toast.error("Erro ao remover postagem");
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast.error("Erro ao remover postagem");
     }
     
     setDeleteDialogOpen(false);
     setPostToDelete(null);
-    
-    toast.success("Postagem removida com sucesso!");
   };
   
   const handleCalendarDateSelect = (date: Date | undefined) => {
@@ -238,15 +282,30 @@ const ClientAgenda = () => {
         uploadedImageUrls.push(fileUrl);
       }
       
-      setPosts(prev => prev.map(post => {
-        if (post.id === postId) {
-          const updatedImages = [...(post.images || []), ...uploadedImageUrls];
-          return { ...post, images: updatedImages };
-        }
-        return post;
-      }));
+      // Find the post to update
+      const postToUpdate = posts.find(p => p.id === postId);
       
-      toast.success("Arquivo(s) adicionado(s) com sucesso!");
+      if (postToUpdate) {
+        const updatedPost = {
+          ...postToUpdate,
+          images: [...(postToUpdate.images || []), ...uploadedImageUrls]
+        };
+        
+        const savedPost = await savePost(updatedPost);
+        
+        if (savedPost) {
+          setPosts(prev => prev.map(post => {
+            if (post.id === postId) {
+              return savedPost;
+            }
+            return post;
+          }));
+          
+          toast.success("Arquivo(s) adicionado(s) com sucesso!");
+        } else {
+          toast.error("Erro ao salvar imagens");
+        }
+      }
     } catch (error) {
       console.error('Error uploading image:', error);
       toast.error("Erro ao fazer upload do arquivo.", {
@@ -257,24 +316,52 @@ const ClientAgenda = () => {
     }
   };
   
-  const handleToggleStatus = (postId: number) => {
-    setPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        const newStatus = !post.completed;
-        return { ...post, completed: newStatus };
-      }
-      return post;
-    }));
+  const handleToggleStatus = async (postId: number) => {
+    // Find the post to update
+    const postToUpdate = posts.find(p => p.id === postId);
     
-    toast.success("Status da postagem atualizado!", {
-      duration: 2000,
-    });
+    if (postToUpdate) {
+      const updatedPost = {
+        ...postToUpdate,
+        completed: !postToUpdate.completed
+      };
+      
+      try {
+        const savedPost = await savePost(updatedPost);
+        
+        if (savedPost) {
+          setPosts(prev => prev.map(post => {
+            if (post.id === postId) {
+              return savedPost;
+            }
+            return post;
+          }));
+          
+          toast.success("Status da postagem atualizado!", {
+            duration: 2000,
+          });
+        } else {
+          toast.error("Erro ao atualizar status");
+        }
+      } catch (error) {
+        console.error('Error updating post status:', error);
+        toast.error("Erro ao atualizar status");
+      }
+    }
   };
+  
+  if (loading && !client) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Carregando...</p>
+      </div>
+    );
+  }
   
   if (!client) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p>Carregando...</p>
+        <p>Cliente não encontrado</p>
       </div>
     );
   }
