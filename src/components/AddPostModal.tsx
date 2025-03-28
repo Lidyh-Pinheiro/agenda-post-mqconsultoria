@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar as CalendarIcon, X } from 'lucide-react';
+import { Calendar as CalendarIcon, X, CheckIcon } from 'lucide-react';
 import { 
   Dialog, 
   DialogContent, 
@@ -29,6 +29,21 @@ import {
   FormItem,
   FormLabel,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface AddPostModalProps {
   open: boolean;
@@ -45,6 +60,17 @@ interface AddPostModalProps {
   initialDate?: Date;
 }
 
+const POST_TYPES = [
+  { value: 'Feed', label: 'Feed' },
+  { value: 'Stories', label: 'Stories' },
+  { value: 'Registro', label: 'Registro' },
+  { value: 'Vídeo', label: 'Vídeo' },
+  { value: 'Foto', label: 'Foto' },
+  { value: 'Reels', label: 'Reels' },
+  { value: 'Card', label: 'Card' },
+  { value: 'Reflexão', label: 'Reflexão' },
+];
+
 const AddPostModal: React.FC<AddPostModalProps> = ({ 
   open, 
   onOpenChange, 
@@ -53,12 +79,11 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
-  const [postType, setPostType] = useState('Feed');
-  const [includeStories, setIncludeStories] = useState(false);
+  const [selectedPostTypes, setSelectedPostTypes] = useState<string[]>(['Feed']);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
 
   const handleSave = () => {
-    if (!title || !text || !selectedDate) {
+    if (!title || !text || !selectedDate || selectedPostTypes.length === 0) {
       return;
     }
 
@@ -68,8 +93,10 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     const formattedDate = format(selectedDate, 'dd/MM');
     const dayOfWeek = selectedDate.getDay();
     
-    // Create the type string based on whether Stories is included
-    const typeString = includeStories ? `${postType} + Stories` : postType;
+    // Join all selected post types with " + "
+    const typeString = selectedPostTypes.join(' + ');
+    // For backward compatibility, use first type as postType
+    const mainPostType = selectedPostTypes[0];
     
     onSave({
       date: formattedDate,
@@ -77,16 +104,23 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
       dayOfWeek: shortDayNames[dayOfWeek],
       title: title,
       type: typeString,
-      postType: postType,
+      postType: mainPostType,
       text: text
     });
     
     // Reset form
     setTitle('');
     setText('');
-    setPostType('Feed');
-    setIncludeStories(false);
+    setSelectedPostTypes(['Feed']);
     onOpenChange(false);
+  };
+
+  const togglePostType = (type: string) => {
+    setSelectedPostTypes(current => 
+      current.includes(type)
+        ? current.filter(t => t !== type)
+        : [...current, type]
+    );
   };
 
   return (
@@ -138,42 +172,34 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
               Tipo
             </label>
             <div className="col-span-3">
-              <select
-                id="post-type"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={postType}
-                onChange={(e) => setPostType(e.target.value)}
-              >
-                <option value="Feed">Feed</option>
-                <option value="Stories">Stories</option>
-                <option value="Feed + Stories">Feed + Stories</option>
-                <option value="Registro">Registro</option>
-                <option value="Vídeo">Vídeo</option>
-                <option value="Foto">Foto</option>
-                <option value="Reels">Reels</option>
-                <option value="Card">Card</option>
-                <option value="Reflexão">Reflexão</option>
-              </select>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-between"
+                  >
+                    {selectedPostTypes.length > 0 
+                      ? selectedPostTypes.join(' + ') 
+                      : 'Selecione os tipos'}
+                    <span className="sr-only">Selecione os tipos</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-full min-w-[240px]">
+                  <DropdownMenuLabel>Tipos de Postagem</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {POST_TYPES.map((type) => (
+                    <DropdownMenuCheckboxItem
+                      key={type.value}
+                      checked={selectedPostTypes.includes(type.value)}
+                      onCheckedChange={() => togglePostType(type.value)}
+                    >
+                      {type.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-          
-          {postType !== "Stories" && postType !== "Feed + Stories" && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <div className="text-right text-sm font-medium">
-                Incluir Stories
-              </div>
-              <div className="col-span-3 flex items-center space-x-2">
-                <Checkbox 
-                  id="include-stories" 
-                  checked={includeStories}
-                  onCheckedChange={(checked) => setIncludeStories(!!checked)}
-                />
-                <Label htmlFor="include-stories" className="text-sm font-normal">
-                  Adicionar também aos Stories
-                </Label>
-              </div>
-            </div>
-          )}
           
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="post-title" className="text-right text-sm font-medium">
