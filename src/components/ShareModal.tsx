@@ -132,6 +132,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               grid-template-columns: 1fr;
               gap: 20px; 
               width: 100%;
+              justify-items: center;
             }
             .card { 
               border: 1px solid rgba(255, 255, 255, 0.3); 
@@ -145,7 +146,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               break-inside: avoid;
               page-break-inside: avoid;
               overflow: hidden;
-              max-width: 100%;
+              max-width: 300px;
+              width: 100%;
               height: auto;
               display: flex;
               flex-direction: column;
@@ -224,6 +226,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 grid-template-columns: 1fr;
                 gap: 20px;
                 width: 100%;
+                justify-items: center;
               }
               .card { 
                 background: rgba(255, 255, 255, 0.8);
@@ -232,6 +235,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 border: 1px solid rgba(255, 255, 255, 0.3);
                 margin-bottom: 20px;
                 width: 100%;
+                max-width: 300px;
                 overflow: hidden;
                 box-shadow: none;
               }

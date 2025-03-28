@@ -150,10 +150,14 @@
     border: 1px solid rgba(255, 255, 255, 0.3) !important;
     transform: none !important;
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: 300px !important;
+    min-width: 280px !important;
     height: auto !important;
     display: block !important;
     background: rgba(255, 255, 255, 0.8) !important;
+    padding: 16px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
   
   .print\:page-break-inside-avoid {
@@ -208,9 +212,12 @@
   .glass-card {
     background: rgba(255, 255, 255, 0.8) !important;
     border: 1px solid rgba(255, 255, 255, 0.3) !important;
-    padding: 1.5rem !important;
+    padding: 1rem !important;
     border-radius: 1rem !important;
     margin-bottom: 20px !important;
+    max-width: 300px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
   
   /* Preserve date badge style */
@@ -249,5 +256,12 @@
   /* Ensure single column for printing */
   .print\:grid-cols-1, .grid {
     grid-template-columns: 1fr !important;
+  }
+  
+  /* Center cards and ensure proper width */
+  .flex.print\:page-break-inside-avoid {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
   }
 }

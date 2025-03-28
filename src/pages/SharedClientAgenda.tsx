@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -292,7 +291,7 @@ const SharedClientAgenda = () => {
         {posts.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 auto-rows-fr print:gap-5">
             {posts.map((post) => (
-              <div key={post.id} className="flex print:page-break-inside-avoid">
+              <div key={post.id} className="flex print:page-break-inside-avoid justify-center">
                 <CalendarEntry
                   date={post.date + (post.time ? ` ${post.time}` : '')}
                   day={post.dayOfWeek}
@@ -305,7 +304,7 @@ const SharedClientAgenda = () => {
                   socialNetworks={post.socialNetworks}
                   preview={true}
                   hideIcons={true}
-                  className="print:break-inside-avoid print:shadow-none print:p-4 print:text-sm"
+                  className="print:break-inside-avoid print:shadow-none print:p-4 print:text-sm max-w-full md:max-w-[400px] lg:max-w-[500px]"
                 />
               </div>
             ))}
