@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { cn } from "@/lib/utils";
-import { Check, Upload, Save } from 'lucide-react';
+import { Check, Upload, Save, Facebook, Instagram, Twitter, Linkedin, Youtube, TikTok } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface CalendarEntryProps {
@@ -18,6 +18,8 @@ interface CalendarEntryProps {
   onUpload?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onStatusChange?: () => void;
   isUploading?: boolean;
+  socialNetworks?: string[];
+  preview?: boolean;
 }
 
 const CalendarEntry: React.FC<CalendarEntryProps> = ({
@@ -33,8 +35,23 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
   onSelect,
   onUpload,
   onStatusChange,
-  isUploading = false
+  isUploading = false,
+  socialNetworks = [],
+  preview = false
 }) => {
+  // Helper function to get the icon component for a social network
+  const getSocialIcon = (network: string) => {
+    switch (network) {
+      case 'facebook': return <Facebook className="w-4 h-4" />;
+      case 'instagram': return <Instagram className="w-4 h-4" />;
+      case 'twitter': return <Twitter className="w-4 h-4" />;
+      case 'linkedin': return <Linkedin className="w-4 h-4" />;
+      case 'youtube': return <Youtube className="w-4 h-4" />;
+      case 'tiktok': return <TikTok className="w-4 h-4" />;
+      default: return null;
+    }
+  };
+
   return (
     <div 
       className={cn(
@@ -101,6 +118,21 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
           {text}
         </p>
       </div>
+      
+      {/* Display social media icons */}
+      {socialNetworks && socialNetworks.length > 0 && (
+        <div className="mt-3 flex items-center space-x-2">
+          {socialNetworks.map((network, idx) => (
+            <span 
+              key={idx} 
+              className="inline-flex items-center justify-center p-1.5 bg-gray-100 rounded-full"
+              title={network.charAt(0).toUpperCase() + network.slice(1)}
+            >
+              {getSocialIcon(network)}
+            </span>
+          ))}
+        </div>
+      )}
       
       {onUpload && (
         <div className="mt-4 border-t border-gray-100 pt-4 flex flex-col">

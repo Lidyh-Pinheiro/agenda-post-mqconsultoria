@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -44,7 +43,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Facebook, Instagram, Twitter, Linkedin } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Linkedin, Youtube, TikTok } from 'lucide-react';
 
 interface AddPostModalProps {
   open: boolean;
@@ -87,6 +86,8 @@ const SOCIAL_NETWORKS = [
   { id: 'instagram', label: 'Instagram', icon: Instagram },
   { id: 'twitter', label: 'Twitter', icon: Twitter },
   { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
+  { id: 'youtube', label: 'YouTube', icon: Youtube },
+  { id: 'tiktok', label: 'TikTok', icon: TikTok },
 ];
 
 const AddPostModal: React.FC<AddPostModalProps> = ({ 
@@ -103,30 +104,25 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate || new Date());
   const [selectedSocialNetworks, setSelectedSocialNetworks] = useState<string[]>(['instagram']);
 
-  // Effect to handle initialPost for editing
   useEffect(() => {
     if (initialPost) {
       setTitle(initialPost.title);
       setText(initialPost.text);
       setObservation(initialPost.observation || '');
       
-      // Parse the type string to get individual post types
       const types = initialPost.type.split(' + ');
       setSelectedPostTypes(types);
       
-      // Set social networks if available
       if (initialPost.socialNetworks && initialPost.socialNetworks.length > 0) {
         setSelectedSocialNetworks(initialPost.socialNetworks);
       }
       
-      // If date needs to be set from string (DD/MM)
       if (initialPost.date) {
         const [day, month] = initialPost.date.split('/');
         const year = new Date().getFullYear();
         setSelectedDate(new Date(year, parseInt(month) - 1, parseInt(day)));
       }
     } else {
-      // Reset form when not editing
       setTitle('');
       setText('');
       setObservation('');
@@ -147,9 +143,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
     const formattedDate = format(selectedDate, 'dd/MM');
     const dayOfWeek = selectedDate.getDay();
     
-    // Join all selected post types with " + "
     const typeString = selectedPostTypes.join(' + ');
-    // For backward compatibility, use first type as postType
     const mainPostType = selectedPostTypes[0];
     
     onSave({
@@ -164,7 +158,6 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
       socialNetworks: selectedSocialNetworks
     });
     
-    // Reset form
     setTitle('');
     setText('');
     setObservation('');

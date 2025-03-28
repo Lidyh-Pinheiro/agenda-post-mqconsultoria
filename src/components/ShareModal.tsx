@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -244,6 +243,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                         highlighted={true}
                         themeColor={themeColor}
                         completed={post.completed}
+                        socialNetworks={post.socialNetworks}
                         preview={true}
                       />
                     </div>
