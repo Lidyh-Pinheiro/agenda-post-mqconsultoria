@@ -51,7 +51,7 @@ const Login = () => {
       }, 1000);
     } 
     // Admin authentication
-    else if (loginType === 'admin' && adminEmail === 'admin@mqconsultoria.marketing' && adminPassword === 'admin123') {
+    else if (loginType === 'admin' && adminEmail === 'contato@mqconsultoria.marketing' && adminPassword === '11021979My@') {
       setTimeout(() => {
         // Store logged in state for admin
         localStorage.setItem('isLoggedIn', 'true');
