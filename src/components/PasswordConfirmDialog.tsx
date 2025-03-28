@@ -26,7 +26,7 @@ const PasswordConfirmDialog: React.FC<PasswordConfirmDialogProps> = ({
   open,
   onOpenChange,
   onConfirm,
-  title = "Confirmar",
+  title = "Confirmar!",
   description = "Para confirmar, por favor digite a senha do cliente."
 }) => {
   const [password, setPassword] = useState('');
