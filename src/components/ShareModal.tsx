@@ -146,7 +146,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId })
             variant="outline" 
             onClick={() => onOpenChange(false)}
           >
-            Fechar
+            Acessar área
           </Button>
         </DialogFooter>
       </DialogContent>
