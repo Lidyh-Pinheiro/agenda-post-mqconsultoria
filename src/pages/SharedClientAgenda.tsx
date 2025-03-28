@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 
@@ -63,7 +63,7 @@ const SharedClientAgenda = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-800 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando agenda...</p>
+          <p className="mt-4 text-gray-700">Carregando agenda...</p>
         </div>
       </div>
     );
@@ -76,7 +76,7 @@ const SharedClientAgenda = () => {
           <CardContent className="pt-6">
             <div className="text-center">
               <h2 className="text-xl font-semibold text-gray-800">Cliente não encontrado</h2>
-              <p className="text-gray-600 mt-2">O cliente solicitado não foi encontrado ou não existe.</p>
+              <p className="text-gray-700 mt-2">O cliente solicitado não foi encontrado ou não existe.</p>
             </div>
           </CardContent>
         </Card>
@@ -89,7 +89,7 @@ const SharedClientAgenda = () => {
   return (
     <div 
       className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-white"
-      style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}10, white)` }}
+      style={{ backgroundImage: `linear-gradient(to bottom right, ${themeColor}15, white)` }}
     >
       <div className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-12">
@@ -102,7 +102,7 @@ const SharedClientAgenda = () => {
           <h2 className="text-2xl font-semibold text-gray-800 mt-2">
             {client.name}
           </h2>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-700 mt-2">
             {client.description || "Confira abaixo as postagens planejadas"}
           </p>
         </div>
@@ -122,6 +122,7 @@ const SharedClientAgenda = () => {
                   completed={post.completed}
                   socialNetworks={post.socialNetworks}
                   preview={true}
+                  hideIcons={true}
                 />
               </div>
             ))}
@@ -130,7 +131,7 @@ const SharedClientAgenda = () => {
           <Card className="w-full">
             <CardContent className="pt-6">
               <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-gray-600">
+                <h3 className="text-lg font-medium text-gray-700">
                   Nenhuma postagem disponível para visualização
                 </h3>
               </div>
@@ -138,8 +139,11 @@ const SharedClientAgenda = () => {
           </Card>
         )}
         
-        <div className="mt-12 text-center text-gray-500 text-sm">
+        <div className="mt-12 text-center text-gray-600 text-sm">
           <p>Última atualização: {new Date().toLocaleDateString('pt-BR')}</p>
+          {settings.companyName && (
+            <p className="mt-2">{settings.companyName}</p>
+          )}
         </div>
       </div>
     </div>

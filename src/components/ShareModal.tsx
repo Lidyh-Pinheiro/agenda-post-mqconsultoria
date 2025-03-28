@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Facebook, Send, Copy, Download, Printer, Eye, Share } from 'lucide-react';
+import { MessageSquare, Facebook, Send, Copy, Download, Printer, Eye } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -148,40 +148,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
     }
   };
   
-  const downloadAsPng = async () => {
-    if (generatedImage) {
-      const link = document.createElement('a');
-      link.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
-      link.href = generatedImage;
-      link.click();
-      
-      toast.success('Imagem da agenda salva com sucesso!');
-    } else if (printableAreaRef.current) {
-      try {
-        toast.loading('Gerando imagem...');
-        const canvas = await html2canvas(printableAreaRef.current, {
-          scale: 2,
-          backgroundColor: '#FFFFFF'
-        });
-        
-        const imageUrl = canvas.toDataURL('image/png');
-        setGeneratedImage(imageUrl);
-        
-        const link = document.createElement('a');
-        link.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
-        link.href = imageUrl;
-        link.click();
-        
-        toast.dismiss();
-        toast.success('Imagem da agenda salva com sucesso!');
-      } catch (error) {
-        console.error('Erro ao gerar imagem:', error);
-        toast.dismiss();
-        toast.error('Erro ao gerar imagem da agenda');
-      }
-    }
-  };
-  
   const printContent = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -197,17 +163,94 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
         <head>
           <title>Agenda de ${client.name}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .agenda-header { text-align: center; margin-bottom: 20px; }
-            .agenda-header h1 { color: ${themeColor}; }
-            .card-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
-            .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-            .card-date { background-color: ${themeColor}; color: white; display: inline-block; padding: 5px 10px; border-radius: 15px; font-weight: bold; margin-bottom: 10px; }
-            .card-title { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
-            .card-type { background-color: #f1f5f9; color: #64748b; padding: 4px 8px; border-radius: 4px; display: inline-block; font-size: 12px; margin-bottom: 8px; }
-            .card-text { white-space: pre-line; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            body { 
+              font-family: 'Inter', sans-serif; 
+              padding: 40px; 
+              max-width: 1200px; 
+              margin: 0 auto; 
+              color: #333;
+            }
+            .agenda-header { 
+              text-align: center; 
+              margin-bottom: 40px; 
+              padding-bottom: 20px;
+              border-bottom: 1px solid #eaeaea;
+            }
+            .agenda-header h1 { 
+              color: ${themeColor}; 
+              font-size: 32px;
+              margin-bottom: 8px;
+            }
+            .agenda-header h2 {
+              font-size: 24px;
+              margin-top: 0;
+              margin-bottom: 10px;
+              color: #333;
+            }
+            .agenda-header p {
+              color: #666;
+              margin-top: 0;
+            }
+            .card-container { 
+              display: grid; 
+              grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+              gap: 20px; 
+            }
+            .card { 
+              border: 1px solid #e2e8f0; 
+              border-radius: 12px; 
+              padding: 20px; 
+              margin-bottom: 20px; 
+              box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+              background-color: white;
+            }
+            .card-date { 
+              background-color: ${themeColor}; 
+              color: white; 
+              display: inline-block; 
+              padding: 6px 12px; 
+              border-radius: 20px; 
+              font-weight: 600; 
+              margin-bottom: 15px; 
+              font-size: 14px;
+            }
+            .card-title { 
+              font-size: 18px; 
+              font-weight: 600; 
+              margin-bottom: 10px; 
+              color: #333;
+            }
+            .card-type { 
+              background-color: #f1f5f9; 
+              color: #64748b; 
+              padding: 4px 10px; 
+              border-radius: 12px; 
+              display: inline-block; 
+              font-size: 12px; 
+              margin-bottom: 12px; 
+            }
+            .card-text { 
+              white-space: pre-line; 
+              color: #4b5563;
+              line-height: 1.5;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 1px solid #eaeaea;
+              color: #666;
+              font-size: 14px;
+            }
             @media print {
-              .card { break-inside: avoid; }
+              .card { 
+                break-inside: avoid; 
+                page-break-inside: avoid;
+              }
+              body {
+                padding: 0;
+              }
             }
           </style>
         </head>
@@ -218,9 +261,18 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             <p>${new Date().toLocaleDateString('pt-BR')}</p>
           </div>
           <div class="card-container">
-            ${Array.from(printableArea.querySelectorAll('.agenda-card'))
-              .map(card => card.outerHTML)
-              .join('')}
+            ${Array.from(printableArea.querySelectorAll('.agenda-card')).map(card => {
+              const cleanedCard = card.cloneNode(true) as HTMLElement;
+              
+              // Remove any buttons or interactive elements
+              const buttons = cleanedCard.querySelectorAll('button, svg, .cursor-pointer');
+              buttons.forEach(button => button.parentNode?.removeChild(button));
+              
+              return cleanedCard.outerHTML;
+            }).join('')}
+          </div>
+          <div class="footer">
+            <p>© ${new Date().getFullYear()} ${settings.companyName || 'Agenda de Postagens'}</p>
           </div>
         </body>
       </html>
@@ -231,8 +283,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
     
     setTimeout(() => {
       printWindow.print();
-      // Don't close window, allowing user to cancel print or view
-    }, 300);
+    }, 500);
   };
 
   return (
@@ -309,15 +360,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               <h3 className="text-lg font-medium">Prévia da Agenda</h3>
               <div className="flex gap-2">
                 <Button 
-                  onClick={downloadAsPng}
-                  variant="outline" 
-                  size="sm"
-                  className="flex items-center gap-1"
-                >
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Salvar Imagem</span>
-                </Button>
-                <Button 
                   onClick={printContent}
                   variant="outline" 
                   size="sm"
@@ -348,6 +390,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                         completed={post.completed}
                         socialNetworks={post.socialNetworks}
                         preview={true}
+                        hideIcons={true}
                       />
                     </div>
                   ))
@@ -365,7 +408,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white"
               >
                 <MessageSquare className="w-4 h-4" />
-                Salvar e Enviar
+                Compartilhar
               </Button>
               
               <Button 
@@ -373,7 +416,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Facebook className="w-4 h-4" />
-                Salvar e Postar
+                Postar
               </Button>
               
               <Button 
@@ -382,7 +425,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 variant="outline"
               >
                 <Send className="w-4 h-4" />
-                Salvar e Enviar
+                Enviar
               </Button>
               
               <Button 
@@ -391,7 +434,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
                 className="flex items-center justify-center gap-2"
               >
                 <Copy className="w-4 h-4" />
-                Salvar Imagem
+                Copiar
               </Button>
             </div>
           </TabsContent>
