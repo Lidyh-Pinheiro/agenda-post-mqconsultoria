@@ -7,9 +7,10 @@ import { useSettings, Client } from '@/contexts/SettingsContext';
 import { Printer, Copy, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CalendarPost {
-  id: number;
+  id: string;
   date: string;
   day: string;
   dayOfWeek: string;
@@ -59,39 +60,101 @@ const SharedClientAgenda = () => {
       setClient(foundClient);
       console.log("Found client:", foundClient.name);
       
-      // Load the posts for this client
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
+      // Load the posts for this client from Supabase
+      const fetchPostsFromSupabase = async () => {
         try {
-          const allPosts = JSON.parse(storedPosts);
-          
-          // More robust filtering with additional logging
-          console.log("All posts:", allPosts);
-          console.log("Looking for clientId:", clientId);
-          
-          const clientPosts = allPosts.filter((post: CalendarPost) => {
-            const matches = post.clientId === clientId;
-            if (matches) {
-              console.log("Matched post:", post.title);
-            }
-            return matches;
-          });
-          
-          console.log('Client ID:', clientId);
-          console.log('Total posts found:', allPosts.length);
-          console.log('Filtered posts for client:', clientPosts.length);
-          
-          if (clientPosts.length === 0) {
-            console.log('No posts found for this client. Client ID might not match or there are no posts.');
+          // Fetch posts for this client
+          const { data: postsData, error: postsError } = await supabase
+            .from('calendar_posts')
+            .select('*')
+            .eq('client_id', clientId);
             
-            // Additional check for malformed data
-            allPosts.forEach((post: CalendarPost) => {
-              console.log(`Post client ID: ${post.clientId}, Current client ID: ${clientId}, Match: ${post.clientId === clientId}`);
-            });
+          if (postsError) {
+            throw postsError;
           }
           
+          console.log('Posts from Supabase:', postsData);
+          
+          if (!postsData || postsData.length === 0) {
+            console.log('No posts found in Supabase for client ID:', clientId);
+            
+            // Fall back to localStorage if no posts in Supabase
+            const storedPosts = localStorage.getItem('calendarPosts');
+            if (storedPosts) {
+              try {
+                const allPosts = JSON.parse(storedPosts);
+                const clientPosts = allPosts.filter((post: CalendarPost) => post.clientId === clientId);
+                
+                console.log('Falling back to localStorage, found posts:', clientPosts.length);
+                
+                if (clientPosts.length > 0) {
+                  // We found posts in localStorage, let's migrate them to Supabase
+                  for (const post of clientPosts) {
+                    await migratePostToSupabase(post);
+                  }
+                  
+                  // Fetch again to get the newly migrated posts
+                  const { data: refreshedData } = await supabase
+                    .from('calendar_posts')
+                    .select('*')
+                    .eq('client_id', clientId);
+                    
+                  if (refreshedData && refreshedData.length > 0) {
+                    await processPostsData(refreshedData);
+                  }
+                } else {
+                  setPosts([]);
+                }
+              } catch (error) {
+                console.error('Error parsing localStorage posts:', error);
+                setPosts([]);
+              }
+            } else {
+              setPosts([]);
+            }
+          } else {
+            await processPostsData(postsData);
+          }
+        } catch (error) {
+          console.error('Error fetching posts from Supabase:', error);
+          toast.error('Erro ao carregar as postagens');
+          setPosts([]);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const processPostsData = async (postsData: any[]) => {
+        try {
+          // For each post, fetch its images and social networks
+          const enhancedPosts = await Promise.all(
+            postsData.map(async (post) => {
+              // Fetch images for this post
+              const { data: imagesData } = await supabase
+                .from('post_images')
+                .select('url')
+                .eq('post_id', post.id);
+                
+              // Fetch social networks for this post
+              const { data: networksData } = await supabase
+                .from('post_social_networks')
+                .select('network_name')
+                .eq('post_id', post.id);
+                
+              return {
+                ...post,
+                id: post.id,
+                clientId: post.client_id,
+                dayOfWeek: post.day_of_week,
+                postType: post.post_type,
+                images: imagesData ? imagesData.map(img => img.url) : [],
+                socialNetworks: networksData ? networksData.map(net => net.network_name) : []
+              };
+            })
+          );
+          
           // Sort posts by date
-          const sortedPosts = [...clientPosts].sort((a, b) => {
+          const sortedPosts = [...enhancedPosts].sort((a, b) => {
             try {
               const dateA = parseDate(a.date);
               const dateB = parseDate(b.date);
@@ -104,16 +167,81 @@ const SharedClientAgenda = () => {
           
           setPosts(sortedPosts);
         } catch (error) {
-          console.error('Error parsing stored posts:', error);
-          toast.error('Erro ao carregar as postagens');
+          console.error('Error processing posts data:', error);
+          toast.error('Erro ao processar dados das postagens');
         }
-      } else {
-        console.log('No posts found in localStorage');
-      }
+      };
+
+      const migratePostToSupabase = async (post: CalendarPost) => {
+        try {
+          // Insert the post
+          const { data: newPost, error: postError } = await supabase
+            .from('calendar_posts')
+            .insert({
+              client_id: post.clientId,
+              date: post.date,
+              day: post.day,
+              day_of_week: post.dayOfWeek,
+              title: post.title,
+              type: post.type,
+              post_type: post.postType,
+              text: post.text,
+              completed: post.completed || false,
+              notes: post.notes || ''
+            })
+            .select()
+            .single();
+            
+          if (postError || !newPost) {
+            throw postError || new Error('Failed to insert post');
+          }
+          
+          console.log('Migrated post to Supabase:', newPost);
+          
+          // Insert images if any
+          if (post.images && post.images.length > 0) {
+            const imagesToInsert = post.images.map(url => ({
+              post_id: newPost.id,
+              url: url
+            }));
+            
+            const { error: imagesError } = await supabase
+              .from('post_images')
+              .insert(imagesToInsert);
+              
+            if (imagesError) {
+              console.error('Error migrating images:', imagesError);
+            }
+          }
+          
+          // Insert social networks if any
+          if (post.socialNetworks && post.socialNetworks.length > 0) {
+            const networksToInsert = post.socialNetworks.map(network => ({
+              post_id: newPost.id,
+              network_name: network
+            }));
+            
+            const { error: networksError } = await supabase
+              .from('post_social_networks')
+              .insert(networksToInsert);
+              
+            if (networksError) {
+              console.error('Error migrating social networks:', networksError);
+            }
+          }
+          
+          return newPost;
+        } catch (error) {
+          console.error('Error migrating post to Supabase:', error);
+          return null;
+        }
+      };
+      
+      fetchPostsFromSupabase();
     } else {
       console.log('Client not found with ID:', clientId);
+      setLoading(false);
     }
-    setLoading(false);
   }, [clientId, settings.clients]);
   
   const handlePrint = () => {

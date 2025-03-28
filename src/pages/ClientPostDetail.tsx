@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CalendarPost {
-  id: number;
+  id: string;
   date: string;
   day: string;
   dayOfWeek: string;
@@ -24,6 +24,7 @@ interface CalendarPost {
   notes?: string;
   images?: string[];
   clientId?: string;
+  socialNetworks?: string[];
 }
 
 const ClientPostDetail = () => {
@@ -36,6 +37,7 @@ const ClientPostDetail = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Find the client by ID
   useEffect(() => {
@@ -50,64 +52,193 @@ const ClientPostDetail = () => {
     }
   }, [clientId, settings.clients, navigate]);
   
-  // Load post from localStorage
+  // Load post from Supabase
   useEffect(() => {
-    if (!postId) return;
+    if (!postId || !clientId) return;
     
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const foundPost = allPosts.find((p: CalendarPost) => p.id === parseInt(postId));
-      
-      if (foundPost) {
-        setPost(foundPost);
-        setEditedPost({...foundPost});
-      } else {
-        // Post not found, redirect back
+    const fetchPost = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch the post from Supabase
+        const { data: postData, error: postError } = await supabase
+          .from('calendar_posts')
+          .select('*')
+          .eq('id', postId)
+          .single();
+          
+        if (postError) {
+          console.error('Error fetching post:', postError);
+          
+          // Try fetching from localStorage as fallback
+          const storedPosts = localStorage.getItem('calendarPosts');
+          if (storedPosts) {
+            const allPosts = JSON.parse(storedPosts);
+            const foundPost = allPosts.find((p: any) => p.id.toString() === postId);
+            
+            if (foundPost) {
+              const formattedPost = {
+                ...foundPost,
+                clientId: foundPost.clientId || clientId
+              };
+              
+              setPost(formattedPost);
+              setEditedPost({...formattedPost});
+              
+              // Migrate this post to Supabase
+              const migratedPost = await migratePostToSupabase(formattedPost);
+              if (migratedPost) {
+                // Redirect to the new post ID
+                navigate(`/client/${clientId}/post/${migratedPost.id}`, { replace: true });
+              }
+            } else {
+              // Post not found, redirect back
+              navigate(`/client/${clientId}`);
+            }
+          } else {
+            // No posts in localStorage, redirect back
+            navigate(`/client/${clientId}`);
+          }
+        } else {
+          // Fetch post images
+          const { data: imagesData } = await supabase
+            .from('post_images')
+            .select('url')
+            .eq('post_id', postId);
+            
+          // Fetch post social networks
+          const { data: networksData } = await supabase
+            .from('post_social_networks')
+            .select('network_name')
+            .eq('post_id', postId);
+            
+          const enhancedPost = {
+            ...postData,
+            id: postData.id,
+            clientId: postData.client_id,
+            dayOfWeek: postData.day_of_week,
+            postType: postData.post_type,
+            images: imagesData ? imagesData.map(img => img.url) : [],
+            socialNetworks: networksData ? networksData.map(net => net.network_name) : []
+          };
+          
+          setPost(enhancedPost);
+          setEditedPost({...enhancedPost});
+        }
+      } catch (error) {
+        console.error('Error fetching post details:', error);
+        toast.error('Erro ao carregar detalhes da postagem');
         navigate(`/client/${clientId}`);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+    
+    fetchPost();
   }, [postId, clientId, navigate]);
+  
+  const migratePostToSupabase = async (post: CalendarPost) => {
+    try {
+      const { data: newPost, error: postError } = await supabase
+        .from('calendar_posts')
+        .insert({
+          client_id: clientId,
+          date: post.date,
+          day: post.day,
+          day_of_week: post.dayOfWeek,
+          title: post.title,
+          type: post.type,
+          post_type: post.postType,
+          text: post.text,
+          completed: post.completed || false,
+          notes: post.notes || ''
+        })
+        .select()
+        .single();
+        
+      if (postError || !newPost) {
+        throw postError || new Error('Failed to insert post');
+      }
+      
+      // Insert images if any
+      if (post.images && post.images.length > 0) {
+        const imagesToInsert = post.images.map(url => ({
+          post_id: newPost.id,
+          url: url
+        }));
+        
+        const { error: imagesError } = await supabase
+          .from('post_images')
+          .insert(imagesToInsert);
+          
+        if (imagesError) {
+          console.error('Error migrating images:', imagesError);
+        }
+      }
+      
+      // Insert social networks if any
+      if (post.socialNetworks && post.socialNetworks.length > 0) {
+        const networksToInsert = post.socialNetworks.map(network => ({
+          post_id: newPost.id,
+          network_name: network
+        }));
+        
+        const { error: networksError } = await supabase
+          .from('post_social_networks')
+          .insert(networksToInsert);
+          
+        if (networksError) {
+          console.error('Error migrating social networks:', networksError);
+        }
+      }
+      
+      return newPost;
+    } catch (error) {
+      console.error('Error migrating post to Supabase:', error);
+      return null;
+    }
+  };
   
   const handleBack = () => {
     navigate(`/client/${clientId}`);
   };
   
-  const handleCompleteTask = (completed: boolean) => {
+  const handleCompleteTask = async (completed: boolean) => {
     if (!post) return;
     
-    const updatedPost = {...post, completed};
-    setPost(updatedPost);
-    
-    // Update in localStorage
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const updatedPosts = allPosts.map((p: CalendarPost) => 
-        p.id === post.id ? updatedPost : p
-      );
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    try {
+      const { error } = await supabase
+        .from('calendar_posts')
+        .update({ completed })
+        .eq('id', post.id);
+        
+      if (error) throw error;
+      
+      setPost(prev => prev ? {...prev, completed} : null);
+      
+      toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error updating post status:', error);
+      toast.error('Erro ao atualizar status da postagem');
     }
-    
-    toast(completed ? "Tarefa marcada como concluída!" : "Tarefa desmarcada", {
-      duration: 2000,
-    });
   };
   
-  const handleUpdateNotes = (notes: string) => {
+  const handleUpdateNotes = async (notes: string) => {
     if (!post) return;
     
-    const updatedPost = {...post, notes};
-    setPost(updatedPost);
-    
-    // Update in localStorage
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const updatedPosts = allPosts.map((p: CalendarPost) => 
-        p.id === post.id ? updatedPost : p
-      );
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    try {
+      const { error } = await supabase
+        .from('calendar_posts')
+        .update({ notes })
+        .eq('id', post.id);
+        
+      if (error) throw error;
+      
+      setPost(prev => prev ? {...prev, notes} : null);
+    } catch (error) {
+      console.error('Error updating post notes:', error);
+      toast.error('Erro ao atualizar notas da postagem');
     }
   };
   
@@ -118,7 +249,6 @@ const ClientPostDetail = () => {
     if (!files || files.length === 0) return;
     
     setIsUploading(true);
-    const uploadedImageUrls: string[] = [];
     
     try {
       for (let i = 0; i < files.length; i++) {
@@ -138,24 +268,31 @@ const ClientPostDetail = () => {
         const { data: urlData } = supabase.storage
           .from('post_images')
           .getPublicUrl(filePath);
+        
+        // Insert the image URL in the database
+        const { error: insertError } = await supabase
+          .from('post_images')
+          .insert({
+            post_id: post.id,
+            url: urlData.publicUrl
+          });
           
-        uploadedImageUrls.push(urlData.publicUrl);
-      }
-      
-      const updatedImages = [...(post.images || []), ...uploadedImageUrls];
-      const updatedPost = {...post, images: updatedImages};
-      
-      setPost(updatedPost);
-      setEditedPost(updatedPost);
-      
-      // Update in localStorage
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        const updatedPosts = allPosts.map((p: CalendarPost) => 
-          p.id === post.id ? updatedPost : p
-        );
-        localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+        if (insertError) {
+          throw insertError;
+        }
+        
+        // Update local state
+        setPost(prev => {
+          if (!prev) return null;
+          const updatedImages = [...(prev.images || []), urlData.publicUrl];
+          return {...prev, images: updatedImages};
+        });
+        
+        setEditedPost(prev => {
+          if (!prev) return null;
+          const updatedImages = [...(prev.images || []), urlData.publicUrl];
+          return {...prev, images: updatedImages};
+        });
       }
       
       toast("Arquivo(s) adicionado(s) com sucesso!", {
@@ -178,36 +315,43 @@ const ClientPostDetail = () => {
     try {
       const imageUrl = post.images[imageIndex];
       
-      const urlParts = imageUrl.split('/');
-      const fileName = urlParts[urlParts.length - 1];
-      
-      if (imageUrl.includes('supabase')) {
-        const { error } = await supabase.storage
+      // First, try to find the image in the database by URL
+      const { data: imageData, error: findError } = await supabase
+        .from('post_images')
+        .select('*')
+        .eq('post_id', post.id)
+        .eq('url', imageUrl)
+        .single();
+        
+      if (!findError && imageData) {
+        // Delete from the database first
+        const { error: deleteError } = await supabase
           .from('post_images')
-          .remove([fileName]);
+          .delete()
+          .eq('url', imageUrl);
           
-        if (error) {
-          console.error('Error removing image from storage:', error);
+        if (deleteError) {
+          throw deleteError;
         }
       }
       
+      // Try to remove the file from storage if possible
+      if (imageUrl.includes('supabase')) {
+        const urlParts = imageUrl.split('/');
+        const fileName = urlParts[urlParts.length - 1];
+        
+        await supabase.storage
+          .from('post_images')
+          .remove([fileName]);
+      }
+      
+      // Update local state
       const updatedImages = [...post.images];
       updatedImages.splice(imageIndex, 1);
       
-      const updatedPost = {...post, images: updatedImages};
-      setPost(updatedPost);
-      setEditedPost({...updatedPost});
+      setPost(prev => prev ? {...prev, images: updatedImages} : null);
+      setEditedPost(prev => prev ? {...prev, images: updatedImages} : null);
       
-      // Update in localStorage
-      const storedPosts = localStorage.getItem('calendarPosts');
-      if (storedPosts) {
-        const allPosts = JSON.parse(storedPosts);
-        const updatedPosts = allPosts.map((p: CalendarPost) => 
-          p.id === post.id ? updatedPost : p
-        );
-        localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
-      }
-
       toast("Imagem removida!", {
         duration: 2000,
       });
@@ -238,32 +382,39 @@ const ClientPostDetail = () => {
     setEditedPost(post);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editedPost) return;
     
-    const updatedPost = {...editedPost};
-    setPost(updatedPost);
-    setIsEditing(false);
-    
-    // Update in localStorage
-    const storedPosts = localStorage.getItem('calendarPosts');
-    if (storedPosts) {
-      const allPosts = JSON.parse(storedPosts);
-      const updatedPosts = allPosts.map((p: CalendarPost) => 
-        p.id === updatedPost.id ? updatedPost : p
-      );
-      localStorage.setItem('calendarPosts', JSON.stringify(updatedPosts));
+    try {
+      const { error } = await supabase
+        .from('calendar_posts')
+        .update({
+          title: editedPost.title,
+          text: editedPost.text
+        })
+        .eq('id', editedPost.id);
+        
+      if (error) throw error;
+      
+      setPost(editedPost);
+      setIsEditing(false);
+      
+      toast("Alterações salvas com sucesso!", {
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error saving edit:', error);
+      toast.error('Erro ao salvar alterações');
     }
-    
-    toast("Alterações salvas com sucesso!", {
-      duration: 2000,
-    });
   };
   
-  if (!client || !post) {
+  if (isLoading || !client || !post) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Carregando...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-800 mx-auto"></div>
+          <p className="mt-4 text-gray-700">Carregando...</p>
+        </div>
       </div>
     );
   }
@@ -482,7 +633,7 @@ const ClientPostDetail = () => {
                 Anotações
               </h3>
               <Textarea 
-                value={post.notes}
+                value={post.notes || ''}
                 onChange={(e) => handleUpdateNotes(e.target.value)}
                 placeholder="Adicionar notas sobre esta postagem..."
                 className="min-h-[100px]"
