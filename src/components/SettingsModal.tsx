@@ -13,10 +13,17 @@ import AccountSettingsModal from './AccountSettingsModal';
 interface SettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialTab?: string; // Make this optional
+  editClientId?: string | null; // Make this optional
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => {
-  const { settings, updateCompanyName, updateOwnerName, showAccountSettings, setShowAccountSettings } = useSettings();
+const SettingsModal: React.FC<SettingsModalProps> = ({ 
+  open, 
+  onOpenChange, 
+  initialTab = "general", // Default to general tab
+  editClientId = null 
+}) => {
+  const { settings, updateCompanyName, updateOwnerName, showAccountSettings, setShowAccountSettings, clients } = useSettings();
   
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [ownerName, setOwnerName] = useState(settings.ownerName);
@@ -41,7 +48,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => 
             </DialogDescription>
           </DialogHeader>
           
-          <Tabs defaultValue="general" className="w-full">
+          <Tabs defaultValue={initialTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="general">Geral</TabsTrigger>
               <TabsTrigger value="clients">Clientes</TabsTrigger>
@@ -75,7 +82,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ open, onOpenChange }) => 
             </TabsContent>
             
             <TabsContent value="clients">
-              <ClientTable />
+              <ClientTable 
+                clients={clients}
+                onSelect={(clientId) => {}}
+                onEdit={(client) => {}}
+                onShare={(clientId) => {}}
+                onDelete={(clientId) => {}}
+              />
             </TabsContent>
             
             <TabsContent value="account" className="space-y-4 mt-4">
