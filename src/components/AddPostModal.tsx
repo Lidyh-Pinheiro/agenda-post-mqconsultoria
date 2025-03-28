@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon, X } from 'lucide-react';
 import { 
   Dialog, 
@@ -107,7 +108,7 @@ const AddPostModal: React.FC<AddPostModalProps> = ({
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {selectedDate ? (
-                      format(selectedDate, "PPP", { locale: require('date-fns/locale/pt-BR') })
+                      format(selectedDate, "PPP", { locale: ptBR })
                     ) : (
                       <span>Selecione uma data</span>
                     )}
