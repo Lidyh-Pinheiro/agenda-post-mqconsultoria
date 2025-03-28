@@ -139,7 +139,7 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
       </div>
       
       {/* Display social media icons */}
-      {!hideIcons && socialNetworks && socialNetworks.length > 0 && (
+      {socialNetworks && socialNetworks.length > 0 && (
         <div className="mt-3 flex items-center space-x-2">
           {socialNetworks.map((network, idx) => (
             <span 

@@ -122,7 +122,7 @@ const SharedClientAgenda = () => {
                   completed={post.completed}
                   socialNetworks={post.socialNetworks}
                   preview={true}
-                  hideIcons={true}
+                  hideIcons={false}
                 />
               </div>
             ))}
