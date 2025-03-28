@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Lock, MessageCircle } from 'lucide-react';
+import { Lock, MessageCircle, Eye, EyeOff } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
@@ -35,6 +35,7 @@ const SharedClientAgenda = () => {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   useEffect(() => {
     if (!clientId) {
@@ -88,6 +89,10 @@ const SharedClientAgenda = () => {
       setError('Senha incorreta. Por favor, tente novamente.');
       toast.error("Senha incorreta");
     }
+  };
+  
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
   
   if (loading) {
@@ -148,14 +153,29 @@ const SharedClientAgenda = () => {
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Senha de acesso"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAuthenticate()}
-                  className="w-full"
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Senha de acesso"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAuthenticate()}
+                    className="w-full pr-10"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-10 w-10"
+                    onClick={togglePasswordVisibility}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               
               <Button 

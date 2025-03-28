@@ -2,15 +2,16 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Users } from 'lucide-react';
+import { Calendar, Users, Share2 } from 'lucide-react';
 import { Client } from '@/contexts/SettingsContext';
 
 interface ClientItemProps {
   client: Client;
   onSelect: () => void;
+  onShare?: () => void;
 }
 
-const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect }) => {
+const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect, onShare }) => {
   return (
     <Card className="hover:shadow-md transition-all">
       <CardContent className="p-6">
@@ -53,15 +54,29 @@ const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect }) => {
           </span>
         </div>
         
-        <Button
-          onClick={onSelect}
-          variant="default"
-          className="w-full"
-          style={{ backgroundColor: client.themeColor }}
-        >
-          <Calendar className="w-4 h-4 mr-1" />
-          Ver Agenda
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={onSelect}
+            variant="default"
+            className="w-full"
+            style={{ backgroundColor: client.themeColor }}
+          >
+            <Calendar className="w-4 h-4 mr-1" />
+            Ver Agenda
+          </Button>
+          
+          {onShare && (
+            <Button
+              onClick={onShare}
+              variant="outline"
+              className="w-full"
+              style={{ borderColor: client.themeColor, color: client.themeColor }}
+            >
+              <Share2 className="w-4 h-4 mr-1" />
+              Compartilhar
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

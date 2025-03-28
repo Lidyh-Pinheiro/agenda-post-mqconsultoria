@@ -9,7 +9,7 @@ import { useSettings, Client } from '@/contexts/SettingsContext';
 import { Settings, User, Key, Eye, EyeOff } from 'lucide-react';
 import ClientTable from './ClientTable';
 import AccountSettingsModal from './AccountSettingsModal';
-import { useToast } from "@/hooks/use-toast";
+import { toast } from 'sonner';
 
 interface SettingsModalProps {
   open: boolean;
@@ -17,6 +17,8 @@ interface SettingsModalProps {
   initialTab?: string;
   editClientId?: string | null;
 }
+
+const ADMIN_PASSWORD = "admin123"; // Em produção, isso seria armazenado de forma segura
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ 
   open, 
@@ -34,7 +36,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     updateClientPassword
   } = useSettings();
   
-  const { toast } = useToast();
   const [companyName, setCompanyName] = useState(settings.companyName);
   const [ownerName, setOwnerName] = useState(settings.ownerName);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(editClientId);
@@ -42,6 +43,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [adminVerified, setAdminVerified] = useState(false);
   
   useEffect(() => {
     if (editClientId) {
@@ -52,6 +54,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleSaveGeneral = () => {
     updateCompanyName(companyName);
     updateOwnerName(ownerName);
+    toast.success("Configurações salvas com sucesso");
   };
   
   const handleOpenAccountSettings = () => {
@@ -62,9 +65,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     if (selectedClientId && clientPassword.trim()) {
       updateClientPassword(selectedClientId, clientPassword);
       setClientPassword('');
-      toast({
-        title: "Senha atualizada",
-        description: "A senha do cliente foi atualizada com sucesso.",
+      toast.success("Senha atualizada", {
+        description: "A senha do cliente foi atualizada com sucesso."
       });
     }
   };
@@ -75,31 +77,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setAdminPassword('');
     setShowPassword(false);
     setShowCurrentPassword(false);
+    setAdminVerified(false);
   };
   
   const selectedClient = selectedClientId ? 
     clients.find(c => c.id === selectedClientId) : null;
   
-  // Mock admin password check - in a real app, this would be more secure
-  const isAdminPasswordCorrect = () => {
-    return adminPassword === "admin123"; // Replace with actual admin password check
+  const verifyAdminPassword = () => {
+    if (adminPassword === ADMIN_PASSWORD) {
+      setAdminVerified(true);
+      setShowCurrentPassword(true);
+      return true;
+    } else {
+      toast.error("Senha incorreta", {
+        description: "A senha do administrador está incorreta."
+      });
+      return false;
+    }
   };
   
   const toggleCurrentPasswordVisibility = () => {
-    if (!showCurrentPassword && !adminPassword) {
-      return; // Don't toggle if admin password is not entered
+    if (showCurrentPassword) {
+      setShowCurrentPassword(false);
+      setAdminVerified(false);
+      setAdminPassword('');
+    } else if (adminPassword) {
+      verifyAdminPassword();
     }
-    
-    if (showCurrentPassword && !isAdminPasswordCorrect()) {
-      toast({
-        title: "Senha incorreta",
-        description: "A senha do administrador está incorreta.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setShowCurrentPassword(!showCurrentPassword);
   };
   
   return (
@@ -167,30 +171,46 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                       {selectedClient.password && (
                         <div className="space-y-2">
                           <Label htmlFor="currentPassword">Senha Atual</Label>
-                          <div className="relative">
-                            <Input
-                              id="adminPassword"
-                              type={showCurrentPassword ? "text" : "password"}
-                              value={showCurrentPassword ? selectedClient.password : adminPassword}
-                              onChange={(e) => setAdminPassword(e.target.value)}
-                              placeholder={showCurrentPassword ? "" : "Digite a senha de administrador para visualizar"}
-                              readOnly={showCurrentPassword}
-                              className="pr-10"
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-0 top-0 h-10 w-10"
-                              onClick={toggleCurrentPasswordVisibility}
-                            >
-                              {showCurrentPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
+                          {!adminVerified ? (
+                            <div className="relative">
+                              <Input
+                                id="adminPassword"
+                                type="password"
+                                value={adminPassword}
+                                onChange={(e) => setAdminPassword(e.target.value)}
+                                placeholder="Digite a senha de administrador para visualizar"
+                                className="pr-10"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-0 top-0 h-10 w-10"
+                                onClick={verifyAdminPassword}
+                              >
                                 <Eye className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <Input
+                                id="currentPassword"
+                                type="text"
+                                value={selectedClient.password}
+                                readOnly
+                                className="pr-10"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-0 top-0 h-10 w-10"
+                                onClick={() => setAdminVerified(false)}
+                              >
+                                <EyeOff className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
                       

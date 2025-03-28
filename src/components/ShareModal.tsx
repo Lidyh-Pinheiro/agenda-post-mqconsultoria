@@ -1,7 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Copy, Printer } from 'lucide-react';
+import { MessageSquare, Copy, Printer, Link } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,6 +38,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   const printableAreaRef = useRef<HTMLDivElement>(null);
   const [clientPosts, setClientPosts] = useState<CalendarPost[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string>('');
   
   const client = clientId 
     ? settings.clients.find(c => c.id === clientId) 
@@ -45,10 +47,12 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   if (!client) return null;
   
   const themeColor = client ? client.themeColor : "#dc2626";
-  const shareLink = generateClientShareLink(client.id);
   
   useEffect(() => {
     if (clientId) {
+      const url = generateClientShareLink(clientId);
+      setShareUrl(url);
+      
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         const allPosts = JSON.parse(storedPosts);
@@ -56,7 +60,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
         setClientPosts(filteredPosts);
       }
     }
-  }, [clientId, open]);
+  }, [clientId, open, generateClientShareLink]);
   
   useEffect(() => {
     if (activeTab === "preview" && open && printableAreaRef.current && !generatedImage) {
@@ -81,14 +85,15 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   };
   
   const shareViaWhatsApp = () => {
-    const whatsappUrl = `https://wa.me/?text=Confira a agenda de postagens de ${client.name}: ${shareLink}`;
+    const whatsappUrl = `https://wa.me/?text=Confira a agenda de postagens de ${client.name}: ${shareUrl}`;
     window.open(whatsappUrl, '_blank');
     toast.success('Link preparado para compartilhar via WhatsApp');
   };
   
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareLink);
+    navigator.clipboard.writeText(shareUrl);
     toast.success('Link copiado para a área de transferência');
+    onOpenChange(false);
   };
   
   const printContent = () => {
@@ -347,20 +352,28 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
           </TabsList>
           
           <TabsContent value="link" className="p-4">
-            <div className="mb-4 flex items-center gap-2 p-2 bg-gray-50 rounded border">
-              <input 
-                type="text" 
-                readOnly 
-                value={shareLink} 
-                className="flex-1 bg-transparent border-0 focus:outline-none text-sm"
-              />
-              <Button 
-                onClick={copyToClipboard} 
-                variant="outline" 
-                size="sm"
-              >
-                Copiar
-              </Button>
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Compartilhe este link para acesso à agenda do cliente. O cliente precisará da senha configurada para visualizar as postagens.
+              </p>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded border mt-4">
+                <div className="flex-shrink-0 text-gray-400">
+                  <Link className="w-4 h-4" />
+                </div>
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={shareUrl} 
+                  className="flex-1 bg-transparent border-0 focus:outline-none text-sm"
+                />
+                <Button 
+                  onClick={copyToClipboard} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4 mt-6">
