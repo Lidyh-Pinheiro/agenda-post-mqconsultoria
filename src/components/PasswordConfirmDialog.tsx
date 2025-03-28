@@ -82,7 +82,7 @@ const PasswordConfirmDialog: React.FC<PasswordConfirmDialogProps> = ({
         <AlertDialogFooter>
           <AlertDialogCancel onClick={handleCancel}>Cancelar</AlertDialogCancel>
           <Button onClick={handleConfirm} className="bg-red-600 hover:bg-red-700 text-white">
-            Confirmar Exclusão
+            Confirmar
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

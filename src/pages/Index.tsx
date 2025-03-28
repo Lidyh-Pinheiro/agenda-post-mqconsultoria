@@ -253,7 +253,7 @@ const Index = () => {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         onConfirm={handleDeletePost}
-        title="Confirmar exclusão"
+        title="Confirmar"
         description="Tem certeza que deseja excluir esta postagem? Esta ação não pode ser desfeita."
       />
     </div>

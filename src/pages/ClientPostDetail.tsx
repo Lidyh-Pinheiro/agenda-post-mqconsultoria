@@ -493,7 +493,7 @@ const ClientPostDetail = () => {
         open={deleteImageDialogOpen}
         onOpenChange={setDeleteImageDialogOpen}
         onConfirm={handleRemoveImage}
-        title="Confirmar exclusão"
+        title="Confirmar"
         description="Tem certeza que deseja excluir esta imagem? Esta ação não pode ser desfeita."
       />
     </div>
