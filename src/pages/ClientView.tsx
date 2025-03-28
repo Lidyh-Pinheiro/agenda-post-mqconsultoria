@@ -46,12 +46,17 @@ const ClientView = () => {
     
     const loadClientData = async () => {
       try {
+        console.log('Loading client with ID:', clientId);
+        
         // Try to load from Supabase first
-        const { data: clientData, error } = await supabase
+        const { data: clientData, error: clientError } = await supabase
           .from('clients')
           .select('*')
           .eq('id', clientId)
           .single();
+        
+        console.log('Supabase client data:', clientData);
+        console.log('Supabase client error:', clientError);
         
         if (clientData) {
           // Map Supabase client fields to our Client type
@@ -64,11 +69,15 @@ const ClientView = () => {
             description: clientData.description || undefined
           };
           setClient(mappedClient);
+          console.log('Mapped client data:', mappedClient);
         } else {
           // Fallback to local storage data
           const foundClient = settings.clients.find(c => c.id === clientId);
           if (foundClient) {
             setClient(foundClient);
+            console.log('Found client in local settings:', foundClient);
+          } else {
+            console.log('Client not found in either Supabase or local settings');
           }
         }
         
@@ -84,6 +93,7 @@ const ClientView = () => {
         const foundClient = settings.clients.find(c => c.id === clientId);
         if (foundClient) {
           setClient(foundClient);
+          console.log('Error fallback - found client in local settings:', foundClient);
         }
       } finally {
         setLoading(false);
@@ -95,11 +105,16 @@ const ClientView = () => {
   
   const loadClientPosts = async (clientId: string) => {
     try {
+      console.log('Loading posts for client ID:', clientId);
+      
       // Try to load from Supabase first
-      const { data: postsData, error } = await supabase
+      const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*')
         .eq('clientid', clientId);
+      
+      console.log('Supabase posts data:', postsData);
+      console.log('Supabase posts error:', postsError);
       
       if (postsData && postsData.length > 0) {
         // Map Supabase post fields to our CalendarPost type
@@ -121,6 +136,7 @@ const ClientView = () => {
         }));
         
         setPosts(sortPostsByDate(mappedPosts));
+        console.log('Mapped posts from Supabase:', mappedPosts);
       } else {
         // Fallback to local storage data
         const storedPosts = localStorage.getItem('calendarPosts');
@@ -128,6 +144,7 @@ const ClientView = () => {
           const parsedPosts = JSON.parse(storedPosts);
           const clientPosts = parsedPosts.filter((post: CalendarPost) => post.clientId === clientId);
           setPosts(sortPostsByDate(clientPosts));
+          console.log('Loaded posts from localStorage:', clientPosts);
         }
       }
     } catch (error) {
@@ -138,6 +155,7 @@ const ClientView = () => {
         const parsedPosts = JSON.parse(storedPosts);
         const clientPosts = parsedPosts.filter((post: CalendarPost) => post.clientId === clientId);
         setPosts(sortPostsByDate(clientPosts));
+        console.log('Error fallback - loaded posts from localStorage:', clientPosts);
       }
     }
   };
@@ -152,6 +170,9 @@ const ClientView = () => {
   
   const handleAuthenticate = () => {
     if (!client || !password) return;
+    
+    console.log('Authenticating with password:', password);
+    console.log('Client password:', client.password);
     
     if (client.password === password) {
       setAuthenticated(true);
