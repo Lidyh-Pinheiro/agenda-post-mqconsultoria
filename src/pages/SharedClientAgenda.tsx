@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
-import { Printer } from 'lucide-react';
+import { Printer, Copy, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -78,6 +78,11 @@ const SharedClientAgenda = () => {
     window.print();
   };
   
+  const copyPageLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success('Link copiado para a área de transferência');
+  };
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -126,7 +131,7 @@ const SharedClientAgenda = () => {
             {client.description || "Confira abaixo as postagens planejadas"}
           </p>
           
-          <div className="mt-4 print:hidden">
+          <div className="mt-4 print:hidden flex justify-center gap-2">
             <Button
               onClick={handlePrint}
               variant="outline"
@@ -134,7 +139,16 @@ const SharedClientAgenda = () => {
               style={{ borderColor: themeColor, color: themeColor }}
             >
               <Printer className="w-4 h-4" />
-              Imprimir Agenda
+              Imprimir
+            </Button>
+            <Button
+              onClick={copyPageLink}
+              variant="outline"
+              className="flex items-center gap-2"
+              style={{ borderColor: themeColor, color: themeColor }}
+            >
+              <Copy className="w-4 h-4" />
+              Copiar Link
             </Button>
           </div>
         </div>

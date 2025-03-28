@@ -1,10 +1,10 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Facebook, Send, Copy, Download, Printer, Eye } from 'lucide-react';
+import { MessageSquare, Facebook, Send, Copy, Download, Printer, Share2 } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CalendarEntry from '@/components/CalendarEntry';
 import html2canvas from 'html2canvas';
 
@@ -33,7 +33,6 @@ interface CalendarPost {
 
 const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, posts = [] }) => {
   const { settings, generateClientShareLink } = useSettings();
-  const [activeTab, setActiveTab] = useState<string>("link");
   const printableAreaRef = useRef<HTMLDivElement>(null);
   const [clientPosts, setClientPosts] = useState<CalendarPost[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
@@ -59,10 +58,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   }, [clientId, open]);
   
   useEffect(() => {
-    if (activeTab === "preview" && open && printableAreaRef.current && !generatedImage) {
+    if (open && printableAreaRef.current && !generatedImage) {
       generateImage();
     }
-  }, [activeTab, open]);
+  }, [open]);
   
   const generateImage = async () => {
     if (!printableAreaRef.current) return;
@@ -81,7 +80,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   };
   
   const shareViaWhatsApp = () => {
-    if (generatedImage && activeTab === "preview") {
+    if (generatedImage) {
       const a = document.createElement('a');
       a.href = generatedImage;
       a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -96,7 +95,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   };
   
   const shareViaFacebook = () => {
-    if (generatedImage && activeTab === "preview") {
+    if (generatedImage) {
       const a = document.createElement('a');
       a.href = generatedImage;
       a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -111,7 +110,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   };
   
   const shareViaEmail = () => {
-    if (generatedImage && activeTab === "preview") {
+    if (generatedImage) {
       const a = document.createElement('a');
       a.href = generatedImage;
       a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -128,7 +127,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
   };
   
   const copyToClipboard = () => {
-    if (generatedImage && activeTab === "preview") {
+    if (generatedImage) {
       const a = document.createElement('a');
       a.href = generatedImage;
       a.download = `agenda_${client.name.replace(/\s+/g, '_').toLowerCase()}.png`;
@@ -139,6 +138,11 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
       navigator.clipboard.writeText(shareLink);
       toast.success('Link copiado para a área de transferência');
     }
+  };
+  
+  const openPublicPage = () => {
+    window.open(shareLink, '_blank');
+    toast.success('Página pública aberta em nova aba');
   };
   
   const printContent = () => {
@@ -271,6 +275,36 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               color: #666;
               font-size: 14px;
             }
+            .action-bar {
+              position: fixed;
+              bottom: 20px;
+              left: 50%;
+              transform: translateX(-50%);
+              display: flex;
+              gap: 10px;
+              background: white;
+              padding: 10px 20px;
+              border-radius: 30px;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+              z-index: 1000;
+            }
+            .action-button {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              padding: 8px 16px;
+              border-radius: 20px;
+              background-color: ${themeColor};
+              color: white;
+              font-weight: 600;
+              border: none;
+              cursor: pointer;
+              font-size: 14px;
+              transition: all 0.2s ease;
+            }
+            .action-button:hover {
+              opacity: 0.9;
+            }
             @media print {
               body {
                 background: linear-gradient(to bottom right, ${themeColor}15, white);
@@ -304,6 +338,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               }
               .page-break {
                 page-break-after: always;
+              }
+              .action-bar {
+                display: none;
               }
             }
           </style>
@@ -369,16 +406,30 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             <p>Última atualização: ${new Date().toLocaleDateString('pt-BR')}</p>
             <p>© ${new Date().getFullYear()} ${settings.companyName || 'Agenda de Postagens'}</p>
           </div>
+          
+          <div class="action-bar">
+            <button class="action-button" onclick="navigator.clipboard.writeText('${shareLink}');alert('Link copiado!');">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copiar Link
+            </button>
+            <button class="action-button" onclick="window.print();">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+              </svg>
+              Imprimir
+            </button>
+          </div>
         </body>
       </html>
     `);
     
     printWindow.document.close();
     printWindow.focus();
-    
-    setTimeout(() => {
-      printWindow.print();
-    }, 500);
   };
 
   return (
@@ -390,150 +441,93 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
           </DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="link" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="link">Link</TabsTrigger>
-            <TabsTrigger value="preview">Visualização</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="link" className="p-4">
-            <div className="mb-4 flex items-center gap-2 p-2 bg-gray-50 rounded border">
-              <input 
-                type="text" 
-                readOnly 
-                value={shareLink} 
-                className="flex-1 bg-transparent border-0 focus:outline-none text-sm"
-              />
+        <div className="p-4">
+          <div className="mb-4 flex justify-between items-center">
+            <h3 className="text-lg font-medium">Prévia da Agenda</h3>
+            <div className="flex gap-2">
               <Button 
-                onClick={copyToClipboard} 
+                onClick={openPublicPage}
                 variant="outline" 
                 size="sm"
+                className="flex items-center gap-1"
               >
-                Copiar
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Compartilhar</span>
               </Button>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <Button 
-                onClick={shareViaWhatsApp}
-                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white"
-              >
-                <MessageSquare className="w-4 h-4" />
-                WhatsApp
-              </Button>
-              
-              <Button 
-                onClick={shareViaFacebook}
-                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Facebook className="w-4 h-4" />
-                Facebook
-              </Button>
-              
-              <Button 
-                onClick={shareViaEmail}
-                className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white"
-                variant="outline"
-              >
-                <Send className="w-4 h-4" />
-                Email
-              </Button>
-              
-              <Button 
-                onClick={copyToClipboard}
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-                Copiar Link
-              </Button>
-            </div>
-          </TabsContent>
+          </div>
           
-          <TabsContent value="preview" className="pt-2">
-            <div className="mb-4 flex justify-between items-center">
-              <h3 className="text-lg font-medium">Prévia da Agenda</h3>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={printContent}
-                  variant="outline" 
-                  size="sm"
-                  className="flex items-center gap-1"
-                >
-                  <Printer className="h-4 w-4" />
-                  <span className="hidden sm:inline">Imprimir</span>
-                </Button>
-              </div>
-            </div>
-            
-            <div 
-              className="overflow-y-auto max-h-[500px] p-4 bg-white border rounded-md"
-              style={{ minHeight: '280px' }}
-            >
-              <div ref={printableAreaRef} className="space-y-4">
-                {clientPosts && clientPosts.length > 0 ? (
-                  clientPosts.map((post, index) => (
-                    <div key={post.id} className="agenda-card">
-                      <CalendarEntry
-                        date={post.date}
-                        day={post.dayOfWeek}
-                        title={post.title}
-                        type={post.postType}
-                        text={post.text}
-                        highlighted={true}
-                        themeColor={themeColor}
-                        completed={post.completed}
-                        socialNetworks={post.socialNetworks}
-                        preview={true}
-                        hideIcons={true}
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    Nenhuma postagem disponível para visualização
+          <div 
+            className="overflow-y-auto max-h-[500px] p-4 bg-white border rounded-md"
+            style={{ minHeight: '280px' }}
+          >
+            <div ref={printableAreaRef} className="space-y-4">
+              {clientPosts && clientPosts.length > 0 ? (
+                clientPosts.map((post, index) => (
+                  <div key={post.id} className="agenda-card">
+                    <CalendarEntry
+                      date={post.date}
+                      day={post.dayOfWeek}
+                      title={post.title}
+                      type={post.postType}
+                      text={post.text}
+                      highlighted={true}
+                      themeColor={themeColor}
+                      completed={post.completed}
+                      socialNetworks={post.socialNetworks}
+                      preview={true}
+                      hideIcons={true}
+                    />
                   </div>
-                )}
-              </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Nenhuma postagem disponível para visualização
+                </div>
+              )}
             </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <Button 
+              onClick={shareViaWhatsApp}
+              className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Compartilhar
+            </Button>
             
-            <div className="grid grid-cols-2 gap-4 mt-6">
-              <Button 
-                onClick={shareViaWhatsApp}
-                className="flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Compartilhar
-              </Button>
-              
-              <Button 
-                onClick={shareViaFacebook}
-                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Facebook className="w-4 h-4" />
-                Postar
-              </Button>
-              
-              <Button 
-                onClick={shareViaEmail}
-                className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white"
-                variant="outline"
-              >
-                <Send className="w-4 h-4" />
-                Enviar
-              </Button>
-              
-              <Button 
-                onClick={copyToClipboard}
-                variant="outline"
-                className="flex items-center justify-center gap-2"
-              >
-                <Copy className="w-4 h-4" />
-                Copiar
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
+            <Button 
+              onClick={shareViaFacebook}
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Facebook className="w-4 h-4" />
+              Postar
+            </Button>
+            
+            <Button 
+              onClick={shareViaEmail}
+              className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 text-white"
+              variant="outline"
+            >
+              <Send className="w-4 h-4" />
+              Enviar
+            </Button>
+            
+            <Button 
+              onClick={copyToClipboard}
+              variant="outline"
+              className="flex items-center justify-center gap-2"
+            >
+              <Copy className="w-4 h-4" />
+              Copiar
+            </Button>
+          </div>
+
+          <div className="mt-6 text-sm text-gray-500 text-center">
+            <p>Link público: <span className="font-medium">{shareLink}</span></p>
+          </div>
+        </div>
         
         <DialogFooter className="sm:justify-center mt-4">
           <Button 
