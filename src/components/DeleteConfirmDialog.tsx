@@ -23,7 +23,7 @@ const DeleteConfirmDialog: React.FC<DeleteConfirmDialogProps> = ({
   open,
   onOpenChange,
   onConfirm,
-  title = "Confirmação de exclusão",
+  title = "Confirmar",
   description = "Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita."
 }) => {
   return (
