@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { Lock, MessageCircle, Eye, EyeOff, Printer } from 'lucide-react';
 import CalendarEntry from '@/components/CalendarEntry';
 import { useSettings, Client } from '@/contexts/SettingsContext';
 import { toast } from 'sonner';
-import { supabase, getFromLocalStorage } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CalendarPost {
   id: number;
@@ -26,7 +27,7 @@ interface CalendarPost {
   time?: string;
 }
 
-const SharedClientAgenda = () => {
+const ClientView = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const { settings } = useSettings();
   const [client, setClient] = useState<Client | null>(null);
@@ -45,6 +46,7 @@ const SharedClientAgenda = () => {
     
     const loadClientData = async () => {
       try {
+        // Try to load from Supabase first
         const { data: clientData, error } = await supabase
           .from('clients')
           .select('*')
@@ -52,14 +54,25 @@ const SharedClientAgenda = () => {
           .single();
         
         if (clientData) {
-          setClient(clientData);
+          // Map Supabase client fields to our Client type
+          const mappedClient: Client = {
+            id: clientData.id,
+            name: clientData.name,
+            themeColor: clientData.themecolor,
+            createdAt: clientData.created_at || new Date().toISOString(),
+            password: clientData.password || undefined,
+            description: clientData.description || undefined
+          };
+          setClient(mappedClient);
         } else {
+          // Fallback to local storage data
           const foundClient = settings.clients.find(c => c.id === clientId);
           if (foundClient) {
             setClient(foundClient);
           }
         }
         
+        // Check if user is already authenticated
         const storedAuth = localStorage.getItem(`client_auth_${clientId}`);
         if (storedAuth) {
           setAuthenticated(true);
@@ -67,6 +80,7 @@ const SharedClientAgenda = () => {
         }
       } catch (error) {
         console.error('Error loading client:', error);
+        // Fallback to local storage data
         const foundClient = settings.clients.find(c => c.id === clientId);
         if (foundClient) {
           setClient(foundClient);
@@ -81,38 +95,48 @@ const SharedClientAgenda = () => {
   
   const loadClientPosts = async (clientId: string) => {
     try {
+      // Try to load from Supabase first
       const { data: postsData, error } = await supabase
         .from('posts')
         .select('*')
-        .eq('clientId', clientId);
+        .eq('clientid', clientId);
       
       if (postsData && postsData.length > 0) {
-        const sortedPosts = [...postsData].sort((a, b) => {
-          const dateA = new Date(a.date.split('/').reverse().join('/'));
-          const dateB = new Date(b.date.split('/').reverse().join('/'));
-          return dateA.getTime() - dateB.getTime();
-        });
+        // Map Supabase post fields to our CalendarPost type
+        const mappedPosts: CalendarPost[] = postsData.map(post => ({
+          id: post.id,
+          date: post.date,
+          day: post.day,
+          dayOfWeek: post.dayofweek,
+          title: post.title,
+          type: post.type || '',
+          postType: post.posttype,
+          text: post.text || '',
+          completed: post.completed || false,
+          notes: post.notes || '',
+          images: post.images || [],
+          clientId: post.clientid || '',
+          socialNetworks: post.socialnetworks || [],
+          time: post.time || ''
+        }));
         
-        setPosts(sortedPosts);
+        setPosts(sortPostsByDate(mappedPosts));
       } else {
-        const storedPosts = getFromLocalStorage('calendarPosts');
+        // Fallback to local storage data
+        const storedPosts = localStorage.getItem('calendarPosts');
         if (storedPosts) {
-          const clientPosts = storedPosts.filter((post: CalendarPost) => post.clientId === clientId);
-          
-          const sortedPosts = [...clientPosts].sort((a, b) => {
-            const dateA = new Date(a.date.split('/').reverse().join('/'));
-            const dateB = new Date(b.date.split('/').reverse().join('/'));
-            return dateA.getTime() - dateB.getTime();
-          });
-          
-          setPosts(sortedPosts);
+          const parsedPosts = JSON.parse(storedPosts);
+          const clientPosts = parsedPosts.filter((post: CalendarPost) => post.clientId === clientId);
+          setPosts(sortPostsByDate(clientPosts));
         }
       }
     } catch (error) {
       console.error('Error loading posts:', error);
-      const storedPosts = getFromLocalStorage('calendarPosts');
+      // Fallback to local storage data
+      const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
-        const clientPosts = storedPosts.filter((post: CalendarPost) => post.clientId === clientId);
+        const parsedPosts = JSON.parse(storedPosts);
+        const clientPosts = parsedPosts.filter((post: CalendarPost) => post.clientId === clientId);
         setPosts(sortPostsByDate(clientPosts));
       }
     }
@@ -266,7 +290,7 @@ const SharedClientAgenda = () => {
             {client.description || "Planejamento da Semana/Mês"}
           </p>
           
-          <div className="mt-4 flex items-center justify-center gap-3">
+          <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
             <a 
               href="https://wa.me/91993299153" 
               target="_blank" 
@@ -289,9 +313,9 @@ const SharedClientAgenda = () => {
         </div>
         
         {posts.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 auto-rows-fr print:gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr print:grid-cols-2 print:gap-5">
             {posts.map((post) => (
-              <div key={post.id} className="flex print:page-break-inside-avoid justify-center">
+              <div key={post.id} className="flex print:page-break-inside-avoid">
                 <CalendarEntry
                   date={post.date + (post.time ? ` ${post.time}` : '')}
                   day={post.dayOfWeek}
@@ -304,7 +328,7 @@ const SharedClientAgenda = () => {
                   socialNetworks={post.socialNetworks}
                   preview={true}
                   hideIcons={true}
-                  className="print:break-inside-avoid print:shadow-none print:p-4 print:text-sm max-w-full md:max-w-[400px] lg:max-w-[500px]"
+                  className="print:break-inside-avoid print:shadow-none"
                 />
               </div>
             ))}
@@ -332,4 +356,4 @@ const SharedClientAgenda = () => {
   );
 };
 
-export default SharedClientAgenda;
+export default ClientView;

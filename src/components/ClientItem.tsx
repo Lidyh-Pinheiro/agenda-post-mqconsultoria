@@ -12,6 +12,21 @@ interface ClientItemProps {
 }
 
 const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect, onShare }) => {
+  // Generate the client view URL
+  const generateClientViewUrl = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/client-view/${client.id}`;
+  };
+
+  // Copy client view URL to clipboard
+  const copyClientUrlToClipboard = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const url = generateClientViewUrl();
+    navigator.clipboard.writeText(url);
+    // Alert user that the URL has been copied (you might want to use a toast instead)
+    alert(`URL copiada: ${url}`);
+  };
+
   return (
     <Card className="hover:shadow-md transition-all">
       <CardContent className="p-6">
@@ -65,17 +80,15 @@ const ClientItem: React.FC<ClientItemProps> = ({ client, onSelect, onShare }) =>
             Ver Agenda
           </Button>
           
-          {onShare && (
-            <Button
-              onClick={onShare}
-              variant="outline"
-              className="w-full"
-              style={{ borderColor: client.themeColor, color: client.themeColor }}
-            >
-              <Share2 className="w-4 h-4 mr-1" />
-              Área de Cliente
-            </Button>
-          )}
+          <Button
+            onClick={copyClientUrlToClipboard}
+            variant="outline"
+            className="w-full"
+            style={{ borderColor: client.themeColor, color: client.themeColor }}
+          >
+            <Share2 className="w-4 h-4 mr-1" />
+            Compartilhar
+          </Button>
         </div>
       </CardContent>
     </Card>

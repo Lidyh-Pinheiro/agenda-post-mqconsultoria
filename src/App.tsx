@@ -10,8 +10,7 @@ import NotFound from "./pages/NotFound";
 import ClientAgenda from "./pages/ClientAgenda";
 import ClientPostDetail from "./pages/ClientPostDetail";
 import Login from "./pages/Login";
-import SharedClientAgenda from "./pages/SharedClientAgenda";
-import ClientSharedView from "./pages/ClientSharedView";
+import ClientView from "./pages/ClientView";
 import Admin from "./pages/Admin";
 import { SettingsProvider } from "./contexts/SettingsContext";
 
@@ -114,9 +113,10 @@ const App = () => {
                   </AdminRoute>
                 } 
               />
-              {/* Public shared agenda routes - no authentication required */}
-              <Route path="/shared/client/:clientId" element={<SharedClientAgenda />} />
-              <Route path="/client-view/:clientId" element={<ClientSharedView />} />
+              {/* Unified client view page - accessible without login */}
+              <Route path="/client-view/:clientId" element={<ClientView />} />
+              {/* Redirect old routes to new one */}
+              <Route path="/shared/client/:clientId" element={<Navigate to="/client-view/:clientId" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </SettingsProvider>
