@@ -184,7 +184,8 @@
   /* Fix grid layout for printing */
   .grid {
     display: grid !important;
-    grid-template-columns: 1fr !important;
+    grid-template-columns: repeat(1, 1fr) !important;
+    gap: 1.5rem !important;
     width: 100% !important;
     max-width: 100% !important;
   }
@@ -200,5 +201,41 @@
     max-width: 100% !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+  }
+  
+  /* Preserve card design */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    padding: 1.5rem !important;
+    border-radius: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Preserve date badge style */
+  .date-badge, [style*="background-color"] {
+    padding: 0.5rem 1rem !important;
+    border-radius: 9999px !important;
+    display: inline-block !important;
+    margin-bottom: 0.75rem !important;
+    color: white !important;
+    font-weight: 600 !important;
+  }
+  
+  /* Keep social network icons visible */
+  .mt-3.flex.items-center {
+    display: flex !important;
+    gap: 0.5rem !important;
+    margin-top: 0.75rem !important;
+  }
+  
+  .mt-3.flex.items-center > span {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    background-color: #f3f4f6 !important;
+    border-radius: 9999px !important;
   }
 }

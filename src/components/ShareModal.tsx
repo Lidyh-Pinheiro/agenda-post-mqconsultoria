@@ -197,8 +197,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             }
             .card-container { 
               display: grid; 
-              grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
+              grid-template-columns: repeat(2, 1fr);
               gap: 24px; 
+              width: 100%;
             }
             .card { 
               border: 1px solid #e2e8f0; 
@@ -209,10 +210,12 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               background-color: white;
               break-inside: avoid;
               page-break-inside: avoid;
+              overflow: hidden;
+              max-width: 100%;
             }
             .card-date { 
               background-color: ${themeColor}; 
-              color: white; 
+              color: white !important; 
               display: inline-block; 
               padding: 8px 16px; 
               border-radius: 20px; 
@@ -225,6 +228,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               font-weight: 700; 
               margin-bottom: 12px; 
               color: #333;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
             }
             .card-type { 
               background-color: #f1f5f9; 
@@ -241,9 +246,14 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               color: #4b5563;
               line-height: 1.6;
               font-size: 15px;
+              text-align: justify;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
+              max-width: 100%;
             }
             .social-icons {
               display: flex;
+              flex-wrap: wrap;
               gap: 8px;
               margin-top: 16px;
             }
@@ -257,13 +267,6 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               align-items: center;
               justify-content: center;
             }
-            .color-block {
-              background-color: ${themeColor};
-              color: white;
-              font-weight: bold;
-              padding: 8px 16px;
-              border-radius: 8px;
-            }
             .footer {
               text-align: center;
               margin-top: 60px;
@@ -274,17 +277,33 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
             }
             @media print {
               body {
-                padding: 0;
+                padding: 20px;
                 background-color: white;
               }
               .card-container {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
                 gap: 16px;
+                width: 100%;
               }
               .card { 
                 break-inside: avoid; 
                 page-break-inside: avoid;
                 box-shadow: none;
                 border: 1px solid #eaeaea;
+                margin-bottom: 16px;
+                width: 100%;
+                overflow: hidden;
+              }
+              .card-text {
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              .card-title {
+                max-width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
               }
               .page-break {
                 page-break-after: always;
@@ -308,7 +327,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               const titleEl = cleanedCard.querySelector('h3');
               const typeEl = cleanedCard.querySelector('.bg-gray-100.text-gray-700');
               const textEl = cleanedCard.querySelector('p.text-gray-700');
-              const socialIconsEl = cleanedCard.querySelector('.mt-3.flex.items-center.space-x-2');
+              const socialIconsEl = cleanedCard.querySelector('.mt-3.flex');
               
               // Remove any buttons or interactive elements
               const buttons = cleanedCard.querySelectorAll('button, .cursor-pointer');
@@ -319,25 +338,30 @@ const ShareModal: React.FC<ShareModalProps> = ({ open, onOpenChange, clientId, p
               const type = typeEl ? typeEl.textContent : '';
               const text = textEl ? textEl.textContent : '';
               
+              let socialIconsHtml = '';
+              if (socialIconsEl) {
+                socialIconsHtml = `
+                  <div class="social-icons">
+                    ${Array.from(socialIconsEl.children).map(() => `
+                      <div class="social-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                          <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                          <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg>
+                      </div>
+                    `).join('')}
+                  </div>
+                `;
+              }
+              
               return `
                 <div class="card">
                   <div class="card-date">${date}</div>
                   <div class="card-title">${title}</div>
                   <div class="card-type">${type}</div>
                   <div class="card-text">${text}</div>
-                  ${socialIconsEl ? `
-                    <div class="social-icons">
-                      ${Array.from(socialIconsEl.children).map(() => `
-                        <div class="social-icon">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                          </svg>
-                        </div>
-                      `).join('')}
-                    </div>
-                  ` : ''}
+                  ${socialIconsHtml}
                 </div>
               `;
             }).join('')}
