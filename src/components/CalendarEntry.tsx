@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { cn } from "@/lib/utils";
-import { Calendar } from 'lucide-react';
-import { useSettings } from '@/contexts/SettingsContext';
+import { Check } from 'lucide-react';
 
 interface CalendarEntryProps {
   date: string;
@@ -10,6 +9,7 @@ interface CalendarEntryProps {
   title: string;
   type: string;
   text: string;
+  className?: string;
   highlighted?: boolean;
   useRedTheme?: boolean;
   completed?: boolean;
@@ -22,116 +22,70 @@ const CalendarEntry: React.FC<CalendarEntryProps> = ({
   title,
   type,
   text,
+  className,
   highlighted = false,
   useRedTheme = false,
   completed = false,
   onSelect
 }) => {
-  const { themeColor } = useSettings();
-  
-  const getThemeColorClass = (isBackground = false) => {
-    if (useRedTheme) {
-      return isBackground ? "bg-red-600" : "text-red-600";
-    }
-    
-    switch (themeColor) {
-      case 'blue':
-        return isBackground ? "bg-blue-600" : "text-blue-600";
-      case 'green':
-        return isBackground ? "bg-green-600" : "text-green-600";
-      case 'purple':
-        return isBackground ? "bg-purple-600" : "text-purple-600";
-      case 'orange':
-        return isBackground ? "bg-orange-600" : "text-orange-600";
-      default:
-        return isBackground ? "bg-red-600" : "text-red-600";
-    }
-  };
-
-  const getCompletedIconStyle = () => {
-    if (completed) {
-      return "opacity-100";
-    }
-    return "opacity-0 group-hover:opacity-30";
-  };
-
   return (
     <div 
       className={cn(
-        "calendar-entry relative bg-white rounded-xl overflow-hidden cursor-pointer shadow-sm group border",
-        highlighted ? `border-${themeColor === 'red' ? 'red' : themeColor}-200` : "border-gray-100" 
+        "calendar-entry p-6 rounded-2xl relative overflow-hidden",
+        "flex flex-col w-full backdrop-blur-sm transition-all duration-300",
+        highlighted 
+          ? "glass-card border-2" 
+          : "bg-white/80 shadow-sm hover:shadow-lg border border-gray-100",
+        useRedTheme && highlighted ? "border-red-600" : highlighted ? "border-neia-blue" : "",
+        completed ? "border-green-500" : "",
+        className
       )}
       onClick={onSelect}
     >
-      {/* Completed indicator */}
-      <div className={cn(
-        "absolute top-3 right-3 z-10 w-5 h-5 rounded-full flex items-center justify-center transition-opacity",
-        getCompletedIconStyle(),
-        completed ? "bg-green-500" : `${getThemeColorClass(true)}`
-      )}>
-        <svg 
-          className="w-3 h-3 text-white" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24" 
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={3} 
-            d="M5 13l4 4L19 7" 
-          />
-        </svg>
+      <div className="flex items-center mb-4">
+        <div className={cn(
+          "text-white font-medium text-sm py-1 px-3 rounded-full",
+          "flex items-center justify-center",
+          useRedTheme ? "date-badge-red" : "date-badge"
+        )}>
+          <span>{date}</span>
+          <span className="ml-1">•</span>
+          <span className="ml-1">{day}</span>
+        </div>
+        <div className="ml-auto flex items-center space-x-2">
+          {completed && (
+            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+              <Check className="w-3 h-3 mr-1" />
+              Concluído
+            </span>
+          )}
+          <span className="bg-neia-gray text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
+            {type}
+          </span>
+        </div>
       </div>
       
-      <div className="flex">
-        <div className={cn(
-          "w-24 md:w-28 p-4 flex flex-col items-center justify-center",
-          getThemeColorClass(true)
-        )}>
-          <span className="text-white text-xl md:text-2xl font-bold">{date}</span>
-          <span className="text-white text-sm md:text-base opacity-80">{day}</span>
-        </div>
-        
-        <div className="flex-1 p-4">
-          <div className="flex items-start justify-between">
-            <h3 className="font-semibold text-gray-800 text-lg mb-1 pr-8">{title}</h3>
-          </div>
-          
-          <div className={cn(
-            "inline-block px-2 py-1 text-xs rounded-full mb-2",
-            `bg-${themeColor === 'red' ? 'red' : themeColor}-100 text-${themeColor === 'red' ? 'red' : themeColor}-700`
-          )}>
-            {type}
-          </div>
-          
-          <p className="text-gray-600 text-sm line-clamp-2">{text}</p>
-          
-          <button 
-            className={cn(
-              "mt-3 text-sm font-medium flex items-center",
-              getThemeColorClass()
-            )}
-          >
-            Ver detalhes
-            <svg 
-              className="w-4 h-4 ml-1" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24" 
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M9 5l7 7-7 7" 
-              />
-            </svg>
-          </button>
-        </div>
+      <h3 className="text-xl font-semibold text-gray-800 mb-3">
+        {title}
+      </h3>
+      
+      <div className="flex-1">
+        <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
+          {text}
+        </p>
       </div>
+      
+      {highlighted && (
+        <div className={cn(
+          "mt-4 text-sm font-medium flex items-center",
+          useRedTheme ? "text-red-600" : "text-neia-blue"
+        )}>
+          <span>Ver detalhes</span>
+          <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      )}
     </div>
   );
 };
