@@ -13,6 +13,32 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSettings } from '@/contexts/SettingsContext';
 import SettingsModal from '@/components/SettingsModal';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { Filter, FileDown } from 'lucide-react';
+import { 
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface CalendarPost {
   id: number;
@@ -133,6 +159,10 @@ const Index = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [filterMonth, setFilterMonth] = useState<string>(format(new Date(), 'MM'));
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [page, setPage] = useState(1);
+  const postsPerPage = 10;
   
   useEffect(() => {
     const storedPosts = localStorage.getItem('calendarPosts');
@@ -188,6 +218,32 @@ const Index = () => {
       }
     }
   }, [postId, posts]);
+  
+  useEffect(() => {
+    if (posts.length > 0) {
+      if (filterMonth === 'all') {
+        setFilteredPosts(posts);
+      } else {
+        const filtered = posts.filter(post => {
+          const postMonth = post.date.split('/')[1];
+          return postMonth === filterMonth;
+        });
+        setFilteredPosts(filtered);
+      }
+    }
+  }, [filterMonth, posts]);
+
+  const [filteredPosts, setFilteredPosts] = useState<CalendarPost[]>([]);
+  const paginatedPosts = filteredPosts.slice((page - 1) * postsPerPage, page * postsPerPage);
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+
+  const getPostDates = () => {
+    return posts.map(post => {
+      const [day, month] = post.date.split('/');
+      const year = new Date().getFullYear();
+      return new Date(year, parseInt(month) - 1, parseInt(day));
+    });
+  };
   
   const handleSelectPost = (post: CalendarPost) => {
     const currentPost = posts.find(p => p.id === post.id) || post;
@@ -397,12 +453,13 @@ const Index = () => {
     });
   };
 
-  const handleNavigateAllPosts = () => {
-    navigate('/all-posts');
-  };
-
   const handleBackToHome = () => {
     navigate('/');
+  };
+  
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: document.getElementById('allPostsSection')?.offsetTop || 0, behavior: 'smooth' });
   };
 
   return (
@@ -442,15 +499,6 @@ const Index = () => {
                   showSettings={true}
                   onOpenSettings={() => setSettingsOpen(true)}
                 />
-                
-                <Button 
-                  onClick={handleNavigateAllPosts}
-                  className="flex items-center gap-2 text-white"
-                  style={{ backgroundColor: themeColor, hover: `${themeColor}80` }}
-                >
-                  <Calendar className="w-4 h-4" />
-                  Todas as Postagens
-                </Button>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
@@ -473,6 +521,184 @@ const Index = () => {
                     />
                   </div>
                 ))}
+              </div>
+              
+              <div id="allPostsSection" className="mt-20">
+                <div className="flex justify-between items-center mb-8">
+                  <h2 
+                    className="text-2xl font-bold"
+                    style={{ color: themeColor }}
+                  >
+                    Todas as Postagens
+                  </h2>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1 text-gray-500 hover:text-gray-700"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    <span className="text-sm">Exportar PDF</span>
+                  </Button>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-1">
+                    <Card className="p-4 shadow-md bg-white">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                        <Calendar 
+                          className="w-5 h-5 mr-2"
+                          style={{ color: themeColor }} 
+                        />
+                        Calendário de Postagens
+                      </h3>
+                      <div className="bg-white rounded-lg shadow-sm p-1">
+                        <div className="calendar-container">
+                          <div className="text-center py-4 text-gray-500">
+                            Calendário com datas marcadas
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <Card className="p-6 shadow-md bg-white">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+                          <Filter 
+                            className="w-5 h-5 mr-2"
+                            style={{ color: themeColor }} 
+                          />
+                          Lista de Postagens
+                        </h3>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-500">Filtrar por mês:</span>
+                          <Select 
+                            value={filterMonth} 
+                            onValueChange={setFilterMonth}
+                          >
+                            <SelectTrigger 
+                              className="w-[140px] focus:ring-0 focus:ring-offset-0"
+                              style={{ borderColor: `${themeColor}40` }}
+                            >
+                              <SelectValue placeholder="Selecione o mês" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos</SelectItem>
+                              <SelectItem value="01">Janeiro</SelectItem>
+                              <SelectItem value="02">Fevereiro</SelectItem>
+                              <SelectItem value="03">Março</SelectItem>
+                              <SelectItem value="04">Abril</SelectItem>
+                              <SelectItem value="05">Maio</SelectItem>
+                              <SelectItem value="06">Junho</SelectItem>
+                              <SelectItem value="07">Julho</SelectItem>
+                              <SelectItem value="08">Agosto</SelectItem>
+                              <SelectItem value="09">Setembro</SelectItem>
+                              <SelectItem value="10">Outubro</SelectItem>
+                              <SelectItem value="11">Novembro</SelectItem>
+                              <SelectItem value="12">Dezembro</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="overflow-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[100px]">Data</TableHead>
+                              <TableHead>Título</TableHead>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead className="w-[100px]">Status</TableHead>
+                              <TableHead className="text-right">Ações</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedPosts.length > 0 ? (
+                              paginatedPosts.map((post) => (
+                                <TableRow key={post.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleSelectPost(post)}>
+                                  <TableCell className="font-medium">
+                                    <div className="text-white text-xs font-medium py-1 px-2 rounded-full inline-flex"
+                                      style={{ backgroundColor: themeColor }}
+                                    >
+                                      {post.date}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>{post.title}</TableCell>
+                                  <TableCell>{post.postType}</TableCell>
+                                  <TableCell>
+                                    {post.completed ? (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Concluído
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Pendente
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      className="hover:bg-gray-100"
+                                      style={{ color: themeColor }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSelectPost(post);
+                                      }}
+                                    >
+                                      Ver detalhes
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center py-4 text-gray-500">
+                                  Nenhuma postagem encontrada para este mês.
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      
+                      {filteredPosts.length > postsPerPage && (
+                        <Pagination className="mt-4">
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious 
+                                onClick={() => page > 1 && handlePageChange(page - 1)}
+                                className={page <= 1 ? "pointer-events-none opacity-50" : ""}
+                              />
+                            </PaginationItem>
+                            
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
+                              <PaginationItem key={pageNum}>
+                                <PaginationLink
+                                  isActive={pageNum === page}
+                                  onClick={() => handlePageChange(pageNum)}
+                                  style={pageNum === page ? { borderColor: themeColor, color: themeColor } : {}}
+                                >
+                                  {pageNum}
+                                </PaginationLink>
+                              </PaginationItem>
+                            ))}
+                            
+                            <PaginationItem>
+                              <PaginationNext 
+                                onClick={() => page < totalPages && handlePageChange(page + 1)}
+                                className={page >= totalPages ? "pointer-events-none opacity-50" : ""}
+                              />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      )}
+                    </Card>
+                  </div>
+                </div>
               </div>
             </>
           ) : selectedPost ? (
