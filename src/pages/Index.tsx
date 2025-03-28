@@ -265,7 +265,6 @@ const Index = () => {
     
     toast.success("Postagem adicionada com sucesso!", {
       description: `${newPost.date} - ${newPost.title}`,
-      duration: 3000,
     });
   };
   
@@ -286,9 +285,7 @@ const Index = () => {
     setDeleteDialogOpen(false);
     setPostToDelete(null);
     
-    toast.success("Postagem removida com sucesso!", {
-      duration: 3000,
-    });
+    toast.success("Postagem removida com sucesso!");
   };
   
   const handleCalendarDateSelect = (date: Date | undefined) => {

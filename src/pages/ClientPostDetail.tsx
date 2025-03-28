@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { TransitionLayout } from '@/components/TransitionLayout';
@@ -37,7 +36,6 @@ const ClientPostDetail = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedPost, setEditedPost] = useState<CalendarPost | null>(null);
   
-  // Find the client by ID
   useEffect(() => {
     if (!clientId) return;
     
@@ -45,12 +43,10 @@ const ClientPostDetail = () => {
     if (foundClient) {
       setClient(foundClient);
     } else {
-      // Client not found, redirect to home
       navigate('/');
     }
   }, [clientId, settings.clients, navigate]);
   
-  // Load post from localStorage
   useEffect(() => {
     if (!postId) return;
     
@@ -63,7 +59,6 @@ const ClientPostDetail = () => {
         setPost(foundPost);
         setEditedPost({...foundPost});
       } else {
-        // Post not found, redirect back
         navigate(`/client/${clientId}`);
       }
     }
@@ -79,7 +74,6 @@ const ClientPostDetail = () => {
     const updatedPost = {...post, completed};
     setPost(updatedPost);
     
-    // Update in localStorage
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
       const allPosts = JSON.parse(storedPosts);
@@ -100,7 +94,6 @@ const ClientPostDetail = () => {
     const updatedPost = {...post, notes};
     setPost(updatedPost);
     
-    // Update in localStorage
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
       const allPosts = JSON.parse(storedPosts);
@@ -148,7 +141,6 @@ const ClientPostDetail = () => {
       setPost(updatedPost);
       setEditedPost(updatedPost);
       
-      // Update in localStorage
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         const allPosts = JSON.parse(storedPosts);
@@ -198,7 +190,6 @@ const ClientPostDetail = () => {
       setPost(updatedPost);
       setEditedPost({...updatedPost});
       
-      // Update in localStorage
       const storedPosts = localStorage.getItem('calendarPosts');
       if (storedPosts) {
         const allPosts = JSON.parse(storedPosts);
@@ -245,7 +236,6 @@ const ClientPostDetail = () => {
     setPost(updatedPost);
     setIsEditing(false);
     
-    // Update in localStorage
     const storedPosts = localStorage.getItem('calendarPosts');
     if (storedPosts) {
       const allPosts = JSON.parse(storedPosts);
